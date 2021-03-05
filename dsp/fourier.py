@@ -143,6 +143,31 @@ def hp(ts, si, b, axis=None):
     return _freq_filter(ts, si, b, axis=axis, typ='hp')
 
 
+def freq_filter_template(f, b, typ):
+    """
+    Returns a frequency modulated vector for filtering
+
+    :param f: frequency vector, uniform and monotonic
+    :param b: filter type: bandbass, high pass, lowpass.
+     2 bounds array for 'lp' or 'hp', 4 bounds array for 'bp'
+    :param typ: 2 bounds array
+    :return: amplitude modulated frequency vector
+    """
+
+    def _freq_vector(f, b, typ):
+        filc = fcn_cosine(b)(f)
+        if typ == 'hp':
+            return filc
+        elif typ == 'lp':
+            return 1 - filc
+
+    if typ == 'bp':
+        filc = _freq_vector(f, b[0:2], typ='hp') * _freq_vector(f, b[2:4], typ='lp')
+    else:
+        filc = _freq_vector(f, b, typ=typ)
+    return filc
+
+
 def _freq_filter(ts, si, b, axis=None, typ='lp'):
     """
         Wrapper for hp/lp/bp filters
@@ -151,28 +176,13 @@ def _freq_filter(ts, si, b, axis=None, typ='lp'):
         axis = ts.ndim - 1
     ns = ts.shape[axis]
     f = fscale(ns, si=si, one_sided=True)
-    if typ == 'bp':
-        filc = _freq_vector(f, b[0:2], typ='hp') * _freq_vector(f, b[2:4], typ='lp')
-    else:
-        filc = _freq_vector(f, b, typ=typ)
+    filc = freq_filter_template(b, typ)
     if axis < (ts.ndim - 1):
         filc = filc[:, np.newaxis]
     return np.real(np.fft.ifft(np.fft.fft(ts, axis=axis) * fexpand(filc, ns, axis=0), axis=axis))
 
 
-def _freq_vector(f, b, typ='lp'):
-    """
-        Returns a frequency modulated vector for filtering
 
-        :param f: frequency vector, uniform and monotonic
-        :param b: 2 bounds array
-        :return: amplitude modulated frequency vector
-    """
-    filc = fcn_cosine(b)(f)
-    if typ == 'hp':
-        return filc
-    elif typ == 'lp':
-        return 1 - filc
 
 
 def shift(w, s, axis=-1):

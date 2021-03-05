@@ -157,6 +157,9 @@ class Controller:
                 eqc.ctrl.set_gain(self.gain)
                 eqc.plotItem_seismic.setXLink(self.view.plotItem_seismic)
                 eqc.plotItem_seismic.setYLink(self.view.plotItem_seismic)
+                # also propagate sorting
+                eqc.lineEdit_sort.setText(self.view.lineEdit_sort.text())
+                eqc.ctrl.sort(eqc.lineEdit_sort.text())
 
     def redraw(self):
         """ redraw seismic and headers with order and selection"""
