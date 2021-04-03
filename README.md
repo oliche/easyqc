@@ -54,7 +54,7 @@ I suggest to install a conda environment and run from sources in development mod
 #### Installation
 ```
 git clone https://github.com/oliche/easyqc.git
-conda env create -f ./seisview/env_seisview.yaml
+conda env create -f conda_easyqc.yaml
 conda activate iblenv
 conda develop ./easyqc
 ```
