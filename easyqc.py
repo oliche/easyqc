@@ -189,6 +189,8 @@ class Controller:
         if not(set(keys).issubset(set(self.model.header.keys()))):
             print("Wrong input")
             return
+        elif len(keys) == 0:
+            return
         self.trace_indices = np.lexsort([self.model.header[k] for k in keys])
         self.redraw()
 
@@ -210,8 +212,9 @@ class Controller:
         self.view.imageItem_seismic.setTransform(QTransform(*transform))
         self.view.plotItem_seismic.setLimits(xMin=x0 - .5, xMax=x0 + data.shape[0] - .5,
                                              yMin=t0, yMax=t0 + data.shape[1] * self.model.si)
-
+        # set the header combo box keys
         if isinstance(self.model.header, dict):
+            self.view.comboBox_header.clear()
             for hname in self.model.header.keys():
                 self.view.comboBox_header.addItem(hname)
         self.set_gain(gain=gain)
