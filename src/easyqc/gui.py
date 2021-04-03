@@ -8,7 +8,7 @@ from PyQt5.QtGui import QTransform
 
 import pyqtgraph as pg
 
-import qt
+import easyqc.qt
 
 
 class EasyQC(QtWidgets.QMainWindow):
@@ -253,9 +253,9 @@ class Model:
             np.nansum(self.data ** 2, axis=1) / np.sum(~np.isnan(self.data), axis=1))))
 
 
-def viewdata(w=None, si=.002, h=None, title=None, t0=0, x0=0):
+def viewseis(w=None, si=.002, h=None, title=None, t0=0, x0=0):
     """
-    viewdata(w, h, 'processed')
+    viewseis(w, h, 'processed')
     :param w: 2D array (ntraces, nsamples)
     :param h: sample rate if float, dictionary (si)
     :param t0:
@@ -263,7 +263,7 @@ def viewdata(w=None, si=.002, h=None, title=None, t0=0, x0=0):
     :param title: Tag for the window.
     :return: EasyQC object
     """
-    qt.create_app()
+    easyqc.qt.create_app()
     eqc = EasyQC._get_or_create(title=title)
     if w is not None:
         eqc.ctrl.update_data(w, h=h, si=si, t0=t0, x0=x0)
@@ -272,6 +272,6 @@ def viewdata(w=None, si=.002, h=None, title=None, t0=0, x0=0):
 
 
 if __name__ == '__main__':
-    eqc = viewdata(None)
+    eqc = viewseis(None)
     app = pg.Qt.mkQApp()
     sys.exit(app.exec_())

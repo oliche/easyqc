@@ -1,0 +1,13 @@
+name: easyqc
+channels:
+  - defaults
+dependencies:
+ - python >=3.8
+ - flake8
+ - ipython
+ - numpy
+ - pip
+ - pyqt
+ - pyqtgraph
+ - pytest
+ - scipy
