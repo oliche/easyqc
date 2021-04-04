@@ -1,4 +1,4 @@
-numpyx
+numpy
 PyQt5
 pyqtgraph
 scipy

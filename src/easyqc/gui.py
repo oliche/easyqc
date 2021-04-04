@@ -12,6 +12,10 @@ import easyqc.qt
 
 
 class EasyQC(QtWidgets.QMainWindow):
+    """
+    This is the view in the MVC approach
+    """
+    layers = None  # used for additional scatter layers
 
     @staticmethod
     def _instances():
@@ -29,6 +33,7 @@ class EasyQC(QtWidgets.QMainWindow):
 
     def __init__(self, *args, **kwargs):
         super(EasyQC, self).__init__(*args, **kwargs)
+        self.layers = {}
         self.ctrl = Controller(self)
         uic.loadUi(Path(__file__).parent.joinpath('easyqc.ui'), self)
         # init the seismic density display
@@ -132,8 +137,39 @@ class Controller:
         self.trace_indices = None
         self.hkey = None
 
+    def remove_all_layers(self):
+        layers_dict = self.view.layers.copy()
+        for label in layers_dict:
+            self.remove_layer_from_label(label)
+
+    def remove_layer_from_label(self, label):
+        current_layer = self.view.layers.get(label)
+        if current_layer is not None:
+            current_layer['layer'].clear()
+            self.view.plotItem_seismic.removeItem(current_layer['layer'])
+            self.view.layers.pop(label)
+
+    def add_scatter(self, x, y, rgb=None, label='default'):
+        """
+        Adds a scatter layer to the display (removing any previous one if any)
+        """
+        # self.view.layers[0].clear()
+        #
+        rgb = rgb or (0, 255, 0)
+        self.remove_layer_from_label(label)
+        new_scatter = pg.ScatterPlotItem()
+        self.view.layers[label] = {'layer': new_scatter, 'type': 'scatter'}
+        self.view.plotItem_seismic.addItem(new_scatter)
+        new_scatter.setParentItem(self.view.imageItem_seismic)
+        xyo = np.concatenate((x.flatten()[np.newaxis, :], y.flatten()[np.newaxis, :],
+                              np.ones((1, x.size))), axis=0)
+        ixy = np.matmul(np.linalg.inv(self.transform), xyo)
+        # pg.mkPen(color=(0, 255, 0))
+        new_scatter.setData(x=ixy[0, :], y=ixy[1, :], brush=pg.mkBrush(rgb), name=label)
+
     def cursor2timetraceamp(self, qpoint):
-        """Used for the mouse hover function over seismic display"""
+        """Used for the mouse hover function over seismic display, returns coordinates,
+          amplitude,time and header"""
         ix, iy = self.cursor2ind(qpoint)
         a = self.model.data[ix, iy]
         x, t, _ = np.matmul(self.transform, np.array([ix, iy, 1]))
@@ -201,6 +237,7 @@ class Controller:
         update_data(self, data=None, h=0.002, gain=None)
         """
         # reshape a 3d+ array in 2d to plot as an image
+        self.remove_all_layers()
         if data.ndim >= 3:
             data = np.reshape(data, (-1, data.shape[-1]))
         self.model.set_data(data, si=si, header=h, x0=x0, t0=t0)
