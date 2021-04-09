@@ -77,7 +77,7 @@ class EasyQC(QtWidgets.QMainWindow):
         elif m == QtCore.Qt.ControlModifier and k == QtCore.Qt.Key_P:
             self.ctrl.propagate()
         elif k in (QtCore.Qt.Key_Up, QtCore.Qt.Key_Left, QtCore.Qt.Key_Right, QtCore.Qt.Key_Down):
-            self.translate_seismic(k)
+            self.translate_seismic(k, m == QtCore.Qt.ControlModifier)
 
     def editGain(self):
         try:
@@ -109,21 +109,35 @@ class EasyQC(QtWidgets.QMainWindow):
         self.label_amp.setText(f"{a:2.2E}")
         self.label_h.setText(f"{h:.4f}")
 
-    def translate_seismic(self, k):
-        pass
-        # if k == QtCore.Qt.Key_Up:
-        #     rx, ry = (0., - .75)
-        # elif k == QtCore.Qt.Key_Left:
-        #     rx, ry = (- .75, 0.)
-        # elif k == QtCore.Qt.Key_Right:
-        #     rx, ry = (.75, 0.)
-        # elif k == QtCore.Qt.Key_Down:
-        #     rx, ry = (0., .75)
-        # r = self.plotItem_seismic.viewRect()
-        # print(rx, ry)
-        # r.translate(r.width() * rx, r.height() * ry)
-        # print(r)
-        # self.plotItem_seismic.setRange(self.plotItem_seismic.range)
+    def translate_seismic(self, k, cm):
+        """
+        Resizes vertical or horizontal on a KeyPress
+        :param k:  translate by 1./7
+        :param cm (bool): if the control modifier has been pressed, translate by 1./2
+        :return:
+        """
+        vb = self.plotItem_seismic.getPlotItem().getViewBox()
+        r = vb.viewRect()
+        xlim, ylim = self.ctrl.limits()
+        FAC = 1 / 2 if cm else 1 / 7
+        dy = FAC * r.height()
+        dx = FAC * r.width()
+        if k == QtCore.Qt.Key_Down:
+            yr = np.array([r.y(), r.y() + r.height()]) + dy
+            yr += np.min([0, ylim[1] - yr[1]])
+            vb.setYRange(yr[0], yr[1], padding=0)
+        elif k == QtCore.Qt.Key_Left:
+            xr = np.array([r.x(), r.x() + r.width()]) - dx
+            xr += np.max([0, xlim[0] - xr[0]])
+            vb.setXRange(xr[0], xr[1], padding=0)
+        elif k == QtCore.Qt.Key_Right:
+            xr = np.array([r.x(), r.x() + r.width()]) + dx
+            xr += np.min([0, xlim[1] - xr[1]])
+            vb.setXRange(xr[0], xr[1], padding=0)
+        elif k == QtCore.Qt.Key_Up:
+            yr = np.array([r.y(), r.y() + r.height()]) - dy
+            yr += np.max([0, ylim[0] - yr[0]])
+            vb.setYRange(yr[0], yr[1], padding=0)
 
 
 class Controller:
@@ -160,12 +174,12 @@ class Controller:
         new_scatter = pg.ScatterPlotItem()
         self.view.layers[label] = {'layer': new_scatter, 'type': 'scatter'}
         self.view.plotItem_seismic.addItem(new_scatter)
-        new_scatter.setParentItem(self.view.imageItem_seismic)
-        xyo = np.concatenate((x.flatten()[np.newaxis, :], y.flatten()[np.newaxis, :],
-                              np.ones((1, x.size))), axis=0)
-        ixy = np.matmul(np.linalg.inv(self.transform), xyo)
-        # pg.mkPen(color=(0, 255, 0))
-        new_scatter.setData(x=ixy[0, :], y=ixy[1, :], brush=pg.mkBrush(rgb), name=label)
+        # new_scatter.setParentItem(self.view.imageItem_seismic)
+        # xyo = np.concatenate((x.flatten()[np.newaxis, :], y.flatten()[np.newaxis, :],
+        #                       np.ones((1, x.size))), axis=0)
+        # ixy = np.matmul(np.linalg.inv(self.transform), xyo)
+        # new_scatter.setData(x=ixy[0, :], y=ixy[1, :], brush=pg.mkBrush(rgb), name=label)
+        new_scatter.setData(x=x, y=y, brush=pg.mkBrush(rgb), name=label)
 
     def cursor2timetraceamp(self, qpoint):
         """Used for the mouse hover function over seismic display, returns coordinates,
@@ -181,6 +195,13 @@ class Controller:
         ix = np.max((0, np.min((int(np.floor(qpoint.x())), self.model.ntr - 1))))
         iy = np.max((0, np.min((int(np.round(qpoint.y())), self.model.ns - 1))))
         return ix, iy
+
+    def limits(self):
+        # returns the xlims and ylims of the data
+        ixlim = [0, self.model.ntr]
+        iylim = [0, self.model.ns]
+        x, y, _ = np.matmul(self.transform, np.c_[ixlim, iylim, [1, 1]].T)
+        return x, y
 
     def propagate(self):
         """ set all the eqc instances at the same position/gain scales for flip comparisons """
@@ -261,10 +282,6 @@ class Controller:
 @dataclass
 class Model:
     """Class for keeping track of the visualized data"""
-    data: np.array
-    header: np.array
-    si: float = 1.
-
     def set_data(self, data, header=None, si=None, t0=0, x0=0):
         assert header or si
         # intrinsic data
@@ -286,8 +303,9 @@ class Model:
             self.header.update(header)
 
     def auto_gain(self) -> float:
-        return 20 * np.log10(np.median(np.sqrt(
-            np.nansum(self.data ** 2, axis=1) / np.sum(~np.isnan(self.data), axis=1))))
+        rmsnan = np.nansum(self.data ** 2, axis=self.taxis) / np.sum(
+            ~np.isnan(self.data), axis=self.taxis)
+        return 20 * np.log10(np.median(np.sqrt(rmsnan)))
 
 
 def viewseis(w=None, si=.002, h=None, title=None, t0=0, x0=0):
