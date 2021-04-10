@@ -39,7 +39,6 @@ class EasyQC(QtWidgets.QMainWindow):
         background_color = self.palette().color(self.backgroundRole())
         # init the seismic density display
         self.plotItem_seismic.setAspectLocked(False)
-        self.plotItem_seismic.invertY()
         self.imageItem_seismic = pg.ImageItem()
         self.plotItem_seismic.setBackground(background_color)
         self.plotItem_seismic.addItem(self.imageItem_seismic)
@@ -50,10 +49,9 @@ class EasyQC(QtWidgets.QMainWindow):
         self.plotDataItem_header_v = pg.PlotDataItem()
         self.plotItem_header_h.setBackground(background_color)
         self.plotItem_header_v.addItem(self.plotDataItem_header_v)
-        self.plotItem_header_v.getViewBox().invertY()
         self.plotItem_header_v.setBackground(background_color)
         self.plotItem_seismic.setYLink(self.plotItem_header_v)
-        # set the ticks so that they don't auto scale and ruin the sync
+        # set the ticks so that they don't auto scale and ruin the axes link
         ax = self.plotItem_seismic.getAxis('left')
         ax.setStyle(tickTextWidth=60, autoReduceTextSpace=False, autoExpandTextSpace=False)
         ax = self.plotItem_header_h.getAxis('left')
@@ -118,8 +116,8 @@ class EasyQC(QtWidgets.QMainWindow):
         else:
             return
         qpoint = self.imageItem_seismic.mapFromScene(scenepos)
-        ix, _, a, t, h = self.ctrl.cursor2timetraceamp(qpoint)
-        self.label_x.setText(f"{ix:.0f}")
+        c, t, a, h = self.ctrl.cursor2timetraceamp(qpoint)
+        self.label_x.setText(f"{c:.0f}")
         self.label_t.setText(f"{t:.4f}")
         self.label_amp.setText(f"{a:2.2E}")
         self.label_h.setText(f"{h:.4f}")
@@ -182,39 +180,34 @@ class Controller:
         """
         Adds a scatter layer to the display (removing any previous one if any)
         """
-        # self.view.layers[0].clear()
-        #
         rgb = rgb or (0, 255, 0)
         self.remove_layer_from_label(label)
         new_scatter = pg.ScatterPlotItem()
         self.view.layers[label] = {'layer': new_scatter, 'type': 'scatter'}
         self.view.plotItem_seismic.addItem(new_scatter)
-        # new_scatter.setParentItem(self.view.imageItem_seismic)
-        # xyo = np.concatenate((x.flatten()[np.newaxis, :], y.flatten()[np.newaxis, :],
-        #                       np.ones((1, x.size))), axis=0)
-        # ixy = np.matmul(np.linalg.inv(self.transform), xyo)
-        # new_scatter.setData(x=ixy[0, :], y=ixy[1, :], brush=pg.mkBrush(rgb), name=label)
         new_scatter.setData(x=x, y=y, brush=pg.mkBrush(rgb), name=label)
 
     def cursor2timetraceamp(self, qpoint):
-        """Used for the mouse hover function over seismic display, returns coordinates,
-          amplitude,time and header"""
-        ix, iy = self.cursor2ind(qpoint)
-        a = self.model.data[ix, iy]
-        x, t, _ = np.matmul(self.transform, np.array([ix, iy, 1]))
-        h = self.model.header[self.hkey][ix]
-        return ix, iy, a, t, h
+        """Used for the mouse hover function over seismic display, returns trace, time,
+          amplitude,and header"""
+        ixy = self.cursor2ind(qpoint)
+        a = self.model.data[ixy[0], ixy[1]]
+        xy_ = np.matmul(self.transform, np.array([ixy[0], ixy[1], 1]))
+        t = xy_[self.model.taxis]
+        c = xy_[self.model.caxis]
+        h = self.model.header[self.hkey][ixy[self.model.caxis]]
+        return c, t, a, h
 
     def cursor2ind(self, qpoint):
         """ image coordinates over the seismic display"""
-        ix = np.max((0, np.min((int(np.floor(qpoint.x())), self.model.ntr - 1))))
-        iy = np.max((0, np.min((int(np.round(qpoint.y())), self.model.ns - 1))))
+        ix = np.max((0, np.min((int(np.floor(qpoint.x())), self.model.nx - 1))))
+        iy = np.max((0, np.min((int(np.round(qpoint.y())), self.model.ny - 1))))
         return ix, iy
 
     def limits(self):
         # returns the xlims and ylims of the data in the data space (time, trace)
-        ixlim = [0, self.model.ntr]
-        iylim = [0, self.model.ns]
+        ixlim = [0, self.model.nx]
+        iylim = [0, self.model.ny]
         x, y, _ = np.matmul(self.transform, np.c_[ixlim, iylim, [1, 1]].T)
         return x, y
 
@@ -253,9 +246,12 @@ class Controller:
         if key not in self.model.header.keys():
             return
         self.hkey = key
-        self.view.plotDataItem_header_h.setData(
-            x=np.arange(self.trace_indices.size),
-            y=self.model.header[self.hkey][self.trace_indices])
+        traces = np.arange(self.trace_indices.size)
+        values = self.model.header[self.hkey][self.trace_indices]
+        if self.model.taxis == 1:
+            self.view.plotDataItem_header_h.setData(x=traces, y=values)
+        elif self.model.taxis == 0:
+            self.view.plotDataItem_header_v.setData(y=traces, x=values)
 
     def sort(self, keys):
         if not(set(keys).issubset(set(self.model.header.keys()))):
@@ -266,7 +262,7 @@ class Controller:
         self.trace_indices = np.lexsort([self.model.header[k] for k in keys])
         self.redraw()
 
-    def update_data(self, data, h=None, si=.002, gain=None, x0=0, t0=0):
+    def update_data(self, data, h=None, si=.002, gain=None, x0=0, t0=0, taxis=1):
         """
         data is a 2d array [ntr, nsamples]
         if 3d the first dimensions are merged in ntr and the last is nsamples
@@ -276,17 +272,27 @@ class Controller:
         self.remove_all_layers()
         if data.ndim >= 3:
             data = np.reshape(data, (-1, data.shape[-1]))
-        self.model.set_data(data, si=si, header=h, x0=x0, t0=t0)
+        self.model.set_data(data, si=si, header=h, x0=x0, t0=t0, taxis=taxis)
         self.gain = gain or self.model.auto_gain()
         self.trace_indices = np.arange(self.model.ntr)  # this will contain selection and sort
-        self.view.imageItem_seismic.setImage(data[self.trace_indices, :])
-        transform = [1., 0., 0., 0., si, 0., x0 - .5, t0 - si / 2, 1.]
+        clim = [x0 - .5, x0 + self.model.ntr - .5]
+        tlim = [t0, t0 + self.model.ns * self.model.si]
+        if taxis == 0:  # time is the 0 dimension and the horizontal axis
+            xlim, ylim = (tlim, clim)
+            transform = [si, 0., 0., 0., 1, 0., t0 - si / 2, x0 - .5, 1.]
+            self.view.imageItem_seismic.setImage(data[:, self.trace_indices])
+        elif taxis == 1:  # time is the 1 dimension and vertical axis
+            xlim, ylim = (clim, tlim)
+            transform = [1., 0., 0., 0., si, 0., x0 - .5, t0 - si / 2, 1.]
+            self.view.imageItem_seismic.setImage(data[self.trace_indices, :])
+            self.view.plotItem_seismic.invertY()
+        else:
+            ValueError('taxis must be 0 (horizontal axis) or 1 (vertical axis)')
         self.transform = np.array(transform).reshape((3, 3)).T
         self.view.imageItem_seismic.setTransform(QTransform(*transform))
-        self.view.plotItem_header_h.setLimits(xMin=x0 - .5, xMax=x0 + data.shape[0] - .5)
-        self.view.plotItem_header_v.setLimits(yMin=t0, yMax=t0 + data.shape[1] * self.model.si)
-        self.view.plotItem_seismic.setLimits(xMin=x0 - .5, xMax=x0 + data.shape[0] - .5,
-                                             yMin=t0, yMax=t0 + data.shape[1] * self.model.si)
+        self.view.plotItem_header_h.setLimits(xMin=xlim[0], xMax=xlim[1])
+        self.view.plotItem_header_v.setLimits(yMin=ylim[0], yMax=ylim[1])
+        self.view.plotItem_seismic.setLimits(xMin=xlim[0], xMax=xlim[1], yMin=ylim[0], yMax=ylim[1])
         # reset the view
         xlim, ylim = self.limits()
         vb = self.view.plotItem_seismic.getPlotItem().getViewBox()
@@ -308,14 +314,21 @@ class Model:
     header: np.array
     si: float = 1.
 
-    def set_data(self, data, header=None, si=None, t0=0, x0=0):
+    def set_data(self, data, header=None, si=None, t0=0, x0=0, taxis=1):
         assert header or si
         # intrinsic data
         self.x0 = x0
         self.t0 = t0
         self.header = header
         self.data = data
-        self.ntr, self.ns = self.data.shape
+        self.taxis = taxis
+        self.nx, self.ny = self.data.shape
+        if self.taxis == 1:
+            self.ntr, self.ns = self.data.shape
+            self.caxis = 0
+        else:
+            self.ns, self.ntr = self.data.shape
+            self.caxis = 1
         # get the sampling reate
         if si is not None:
             self.si = si
@@ -329,12 +342,12 @@ class Model:
             self.header.update(header)
 
     def auto_gain(self) -> float:
-        rmsnan = np.nansum(self.data ** 2, axis=1) / np.sum(
-            ~np.isnan(self.data), axis=1)
+        rmsnan = np.nansum(self.data ** 2, axis=self.taxis) / np.sum(
+            ~np.isnan(self.data), axis=self.taxis)
         return 20 * np.log10(np.median(np.sqrt(rmsnan)))
 
 
-def viewseis(w=None, si=.002, h=None, title=None, t0=0, x0=0):
+def viewseis(w=None, si=.002, h=None, title=None, t0=0, x0=0, taxis=1):
     """
     viewseis(w, h, 'processed')
     :param w: 2D array (ntraces, nsamples)
@@ -347,7 +360,7 @@ def viewseis(w=None, si=.002, h=None, title=None, t0=0, x0=0):
     easyqc.qt.create_app()
     eqc = EasyQC._get_or_create(title=title)
     if w is not None:
-        eqc.ctrl.update_data(w, h=h, si=si, t0=t0, x0=x0)
+        eqc.ctrl.update_data(w, h=h, si=si, t0=t0, x0=x0, taxis=taxis)
     eqc.show()
     return eqc
 
