@@ -9,6 +9,7 @@ NB: if you use `ipython` use the `%gui qt` magic command before !
 -   **ctrl + A**: increase display gain by +3dB 
 -   **ctrl + Z**: deacrease display gain by +3dB
 -   **ctrl + P**: propagates display accross all windows (same window size, same axis, same gain)
+-   **up/down/right/left arrows**: pan using keyboard
 
 ### Minimum working example to display a numpy array.
 

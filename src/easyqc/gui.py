@@ -36,15 +36,30 @@ class EasyQC(QtWidgets.QMainWindow):
         self.layers = {}
         self.ctrl = Controller(self)
         uic.loadUi(Path(__file__).parent.joinpath('easyqc.ui'), self)
+        background_color = self.palette().color(self.backgroundRole())
         # init the seismic density display
         self.plotItem_seismic.setAspectLocked(False)
         self.plotItem_seismic.invertY()
         self.imageItem_seismic = pg.ImageItem()
+        self.plotItem_seismic.setBackground(background_color)
         self.plotItem_seismic.addItem(self.imageItem_seismic)
-        # init the header display and link X-axis with density
-        self.plotDataItem_header = pg.PlotDataItem()
-        self.plotItem_Header.addItem(self.plotDataItem_header)
-        self.plotItem_seismic.setXLink(self.plotItem_Header)
+        # init the header display and link X and Y axis with density display
+        self.plotDataItem_header_h = pg.PlotDataItem()
+        self.plotItem_header_h.addItem(self.plotDataItem_header_h)
+        self.plotItem_seismic.setXLink(self.plotItem_header_h)
+        self.plotDataItem_header_v = pg.PlotDataItem()
+        self.plotItem_header_h.setBackground(background_color)
+        self.plotItem_header_v.addItem(self.plotDataItem_header_v)
+        self.plotItem_header_v.getViewBox().invertY()
+        self.plotItem_header_v.setBackground(background_color)
+        self.plotItem_seismic.setYLink(self.plotItem_header_v)
+        # set the ticks so that they don't auto scale and ruin the sync
+        ax = self.plotItem_seismic.getAxis('left')
+        ax.setStyle(tickTextWidth=60, autoReduceTextSpace=False, autoExpandTextSpace=False)
+        ax = self.plotItem_header_h.getAxis('left')
+        ax.setStyle(tickTextWidth=60, autoReduceTextSpace=False, autoExpandTextSpace=False)
+        ax = self.plotItem_header_v.getAxis('left')
+        ax.setStyle(showValues=False)
         # connect signals and slots
         s = self.plotItem_seismic.getViewBox().scene()
         # vb.scene().sigMouseMoved.connect(self.mouseMoveEvent)
@@ -63,9 +78,9 @@ class EasyQC(QtWidgets.QMainWindow):
         """
         page-up / ctrl + a :  gain up
         page-down / ctrl + z : gain down
-        ctrl + p : propagate display
+        ctrl + p : propagate display to current windows
+        up/down/left/right arrows: pan using keys
         :param e:
-        :return:
         """
         k, m = (e.key(), e.modifiers())
         if k == QtCore.Qt.Key_PageUp or (  # page up / ctrl + a
@@ -197,7 +212,7 @@ class Controller:
         return ix, iy
 
     def limits(self):
-        # returns the xlims and ylims of the data
+        # returns the xlims and ylims of the data in the data space (time, trace)
         ixlim = [0, self.model.ntr]
         iylim = [0, self.model.ns]
         x, y, _ = np.matmul(self.transform, np.c_[ixlim, iylim, [1, 1]].T)
@@ -238,7 +253,7 @@ class Controller:
         if key not in self.model.header.keys():
             return
         self.hkey = key
-        self.view.plotDataItem_header.setData(
+        self.view.plotDataItem_header_h.setData(
             x=np.arange(self.trace_indices.size),
             y=self.model.header[self.hkey][self.trace_indices])
 
@@ -268,8 +283,15 @@ class Controller:
         transform = [1., 0., 0., 0., si, 0., x0 - .5, t0 - si / 2, 1.]
         self.transform = np.array(transform).reshape((3, 3)).T
         self.view.imageItem_seismic.setTransform(QTransform(*transform))
+        self.view.plotItem_header_h.setLimits(xMin=x0 - .5, xMax=x0 + data.shape[0] - .5)
+        self.view.plotItem_header_v.setLimits(yMin=t0, yMax=t0 + data.shape[1] * self.model.si)
         self.view.plotItem_seismic.setLimits(xMin=x0 - .5, xMax=x0 + data.shape[0] - .5,
                                              yMin=t0, yMax=t0 + data.shape[1] * self.model.si)
+        # reset the view
+        xlim, ylim = self.limits()
+        vb = self.view.plotItem_seismic.getPlotItem().getViewBox()
+        vb.setXRange(*xlim, padding=0)
+        vb.setYRange(*ylim, padding=0)
         # set the header combo box keys
         if isinstance(self.model.header, dict):
             self.view.comboBox_header.clear()
@@ -282,6 +304,10 @@ class Controller:
 @dataclass
 class Model:
     """Class for keeping track of the visualized data"""
+    data: np.array
+    header: np.array
+    si: float = 1.
+
     def set_data(self, data, header=None, si=None, t0=0, x0=0):
         assert header or si
         # intrinsic data
@@ -303,8 +329,8 @@ class Model:
             self.header.update(header)
 
     def auto_gain(self) -> float:
-        rmsnan = np.nansum(self.data ** 2, axis=self.taxis) / np.sum(
-            ~np.isnan(self.data), axis=self.taxis)
+        rmsnan = np.nansum(self.data ** 2, axis=1) / np.sum(
+            ~np.isnan(self.data), axis=1)
         return 20 * np.log10(np.median(np.sqrt(rmsnan)))
 
 
