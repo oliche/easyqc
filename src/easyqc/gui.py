@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import numpy as np
 from PyQt5 import QtWidgets, QtCore, uic
-from PyQt5.QtGui import QTransform
+from PyQt5.QtGui import QTransform, QIcon
 
 import pyqtgraph as pg
 
@@ -33,9 +33,11 @@ class EasyQC(QtWidgets.QMainWindow):
 
     def __init__(self, *args, **kwargs):
         super(EasyQC, self).__init__(*args, **kwargs)
+        # wave by Diana Militano from the Noun Project
         self.layers = {}
         self.ctrl = Controller(self)
         uic.loadUi(Path(__file__).parent.joinpath('easyqc.ui'), self)
+        self.setWindowIcon(QIcon(str(Path(__file__).parent.joinpath('easyqc.svg'))))
         background_color = self.palette().color(self.backgroundRole())
         # init the seismic density display
         self.plotItem_seismic.setAspectLocked(False)
