@@ -8,7 +8,7 @@ with open('requirements.txt') as f:
 
 setuptools.setup(
     name="easyqc",
-    version="0.1.0",
+    version="0.2.0",
     author="Olivier Winter",
     description="Seismic viewer for numpy",
     long_description=long_description,
@@ -26,5 +26,5 @@ setuptools.setup(
     package_dir={'': 'src'},
     packages=setuptools.find_packages(where="src"),
     package_data={'easyqc': ['easyqc.ui', 'easyqc.svg']},
-    python_requires=">=3.8",
+    python_requires=">=3.7",
 )
