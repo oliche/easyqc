@@ -44,6 +44,7 @@ class EasyQC(QtWidgets.QMainWindow):
         self.imageItem_seismic = pg.ImageItem()
         self.plotItem_seismic.setBackground(background_color)
         self.plotItem_seismic.addItem(self.imageItem_seismic)
+        self.viewBox_seismic = self.plotItem_seismic.getPlotItem().getViewBox()
         # init the header display and link X and Y axis with density display
         self.plotDataItem_header_h = pg.PlotDataItem()
         self.plotItem_header_h.addItem(self.plotDataItem_header_h)
@@ -61,13 +62,18 @@ class EasyQC(QtWidgets.QMainWindow):
         ax = self.plotItem_header_v.getAxis('left')
         ax.setStyle(showValues=False)
         # connect signals and slots
-        s = self.plotItem_seismic.getViewBox().scene()
+
+        s = self.viewBox_seismic.scene()
         # vb.scene().sigMouseMoved.connect(self.mouseMoveEvent)
         self.proxy = pg.SignalProxy(s.sigMouseMoved, rateLimit=60, slot=self.mouseMoveEvent)
         s.sigMouseClicked.connect(self.mouseClick)
         self.lineEdit_gain.returnPressed.connect(self.editGain)
         self.lineEdit_sort.returnPressed.connect(self.editSort)
         self.comboBox_header.activated[str].connect(self.ctrl.set_header)
+        self.viewBox_seismic.sigRangeChanged.connect(self.on_sigRangeChanged)
+        self.horizontalScrollBar.sliderMoved.connect(self.on_horizontalSliderChange)
+        self.verticalScrollBar.sliderMoved.connect(self.on_verticalSliderChange)
+
     """
     View Methods
     """
@@ -131,8 +137,7 @@ class EasyQC(QtWidgets.QMainWindow):
         :param cm (bool): if the control modifier has been pressed, translate by 1./2
         :return:
         """
-        vb = self.plotItem_seismic.getPlotItem().getViewBox()
-        r = vb.viewRect()
+        r = self.viewBox_seismic.viewRect()
         xlim, ylim = self.ctrl.limits()
         FAC = 1 / 2 if cm else 1 / 7
         dy = FAC * r.height()
@@ -140,19 +145,48 @@ class EasyQC(QtWidgets.QMainWindow):
         if k == QtCore.Qt.Key_Down:
             yr = np.array([r.y(), r.y() + r.height()]) + dy
             yr += np.min([0, ylim[1] - yr[1]])
-            vb.setYRange(yr[0], yr[1], padding=0)
+            self.viewBox_seismic.setYRange(yr[0], yr[1], padding=0)
         elif k == QtCore.Qt.Key_Left:
             xr = np.array([r.x(), r.x() + r.width()]) - dx
             xr += np.max([0, xlim[0] - xr[0]])
-            vb.setXRange(xr[0], xr[1], padding=0)
+            self.viewBox_seismic.setXRange(xr[0], xr[1], padding=0)
         elif k == QtCore.Qt.Key_Right:
             xr = np.array([r.x(), r.x() + r.width()]) + dx
             xr += np.min([0, xlim[1] - xr[1]])
-            vb.setXRange(xr[0], xr[1], padding=0)
+            self.viewBox_seismic.setXRange(xr[0], xr[1], padding=0)
         elif k == QtCore.Qt.Key_Up:
             yr = np.array([r.y(), r.y() + r.height()]) - dy
             yr += np.max([0, ylim[0] - yr[0]])
-            vb.setYRange(yr[0], yr[1], padding=0)
+            self.viewBox_seismic.setYRange(yr[0], yr[1], padding=0)
+
+    def on_sigRangeChanged(self, r):
+
+        def set_scroll(sb, r, l):
+            # sb: scroll bar object, r: current range, l: axes limits
+            # cf. https://doc.qt.io/qt-5/qscrollbar.html
+            range = (r[1] - r[0])
+            doclength = (l[1] - l[0])
+            maximum = int((doclength - range) / doclength * 65536)
+            sb.setMaximum(maximum)
+            sb.setPageStep(65536 - maximum)
+            sb.setValue(int((r[0] - l[0]) / doclength * 65536))
+
+        xr, yr = self.viewBox_seismic.viewRange()
+        xl, yl = self.ctrl.limits()
+        set_scroll(self.horizontalScrollBar, xr, xl)
+        set_scroll(self.verticalScrollBar, yr, yl)
+
+    def on_horizontalSliderChange(self, r):
+        l = self.ctrl.limits()[0]
+        r = self.viewBox_seismic.viewRange()[0]
+        x = float(self.horizontalScrollBar.value()) / 65536 * (l[1] - l[0]) + l[0]
+        self.viewBox_seismic.setXRange(x, x + r[1] - r[0], padding=0)
+
+    def on_verticalSliderChange(self, r):
+        l = self.ctrl.limits()[1]
+        r = self.viewBox_seismic.viewRange()[1]
+        y = float(self.verticalScrollBar.value()) / 65536 * (l[1] - l[0]) + l[0]
+        self.viewBox_seismic.setYRange(y, y + r[1] - r[0], padding=0)
 
 
 class Controller:
@@ -297,9 +331,8 @@ class Controller:
         self.view.plotItem_seismic.setLimits(xMin=xlim[0], xMax=xlim[1], yMin=ylim[0], yMax=ylim[1])
         # reset the view
         xlim, ylim = self.limits()
-        vb = self.view.plotItem_seismic.getPlotItem().getViewBox()
-        vb.setXRange(*xlim, padding=0)
-        vb.setYRange(*ylim, padding=0)
+        self.view.viewBox_seismic.setXRange(*xlim, padding=0)
+        self.view.viewBox_seismic.setYRange(*ylim, padding=0)
         # set the header combo box keys
         if isinstance(self.model.header, dict):
             self.view.comboBox_header.clear()
