@@ -8,6 +8,7 @@ NB: if you use `ipython` use the `%gui qt` magic command before !
 ### Keyboard Shortcuts
 -   **ctrl + A**: increase display gain by +3dB 
 -   **ctrl + Z**: deacrease display gain by +3dB
+-   **ctrl + P**: take screenshot to clipboard
 -   **ctrl + P**: propagates display accross all windows (same window size, same axis, same gain)
 -   **up/down/right/left arrows**: pan using keyboard
 

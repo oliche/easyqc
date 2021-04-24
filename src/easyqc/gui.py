@@ -3,12 +3,13 @@ from pathlib import Path
 from dataclasses import dataclass
 
 import numpy as np
-from PyQt5 import QtWidgets, QtCore, uic
-from PyQt5.QtGui import QTransform, QIcon
+from PyQt5 import QtWidgets, QtCore, QtGui, uic
 
 import pyqtgraph as pg
 
 import easyqc.qt
+
+COLOR_PLOTS = (pg.mkColor((31, 119, 180)),)
 
 
 class EasyQC(QtWidgets.QMainWindow):
@@ -37,7 +38,7 @@ class EasyQC(QtWidgets.QMainWindow):
         self.layers = {}
         self.ctrl = Controller(self)
         uic.loadUi(Path(__file__).parent.joinpath('easyqc.ui'), self)
-        self.setWindowIcon(QIcon(str(Path(__file__).parent.joinpath('easyqc.svg'))))
+        self.setWindowIcon(QtGui.QIcon(str(Path(__file__).parent.joinpath('easyqc.svg'))))
         background_color = self.palette().color(self.backgroundRole())
         # init the seismic density display
         self.plotItem_seismic.setAspectLocked(False)
@@ -45,6 +46,18 @@ class EasyQC(QtWidgets.QMainWindow):
         self.plotItem_seismic.setBackground(background_color)
         self.plotItem_seismic.addItem(self.imageItem_seismic)
         self.viewBox_seismic = self.plotItem_seismic.getPlotItem().getViewBox()
+        # setup the context menus
+        self.viewBox_seismic.scene().contextMenu = None  # this gets rid of the export context menu
+        self.plotItem_seismic.plotItem.ctrlMenu = None  # this gets rid of the plot context menu
+        for act in self.viewBox_seismic.menu.actions():
+            if act.text() == 'View All':
+                continue
+            self.viewBox_seismic.menu.removeAction(act)
+        # and add ours
+        self.viewBox_seismic.menu.addSeparator()
+        act = QtGui.QAction("View Trace", self.viewBox_seismic.menu)
+        act.triggered.connect(self.cmenu_ViewTrace)
+        self.viewBox_seismic.menu.addAction(act)
         # init the header display and link X and Y axis with density display
         self.plotDataItem_header_h = pg.PlotDataItem()
         self.plotItem_header_h.addItem(self.plotDataItem_header_h)
@@ -61,8 +74,9 @@ class EasyQC(QtWidgets.QMainWindow):
         ax.setStyle(tickTextWidth=60, autoReduceTextSpace=False, autoExpandTextSpace=False)
         ax = self.plotItem_header_v.getAxis('left')
         ax.setStyle(showValues=False)
+        # prepare placeholders for hover windows
+        self.plotWidget_hoverTrace, self.plotWidget_hoverSpectrum, self.plotWidget_hoverSpectrogram = (None, None, None)
         # connect signals and slots
-
         s = self.viewBox_seismic.scene()
         # vb.scene().sigMouseMoved.connect(self.mouseMoveEvent)
         self.proxy = pg.SignalProxy(s.sigMouseMoved, rateLimit=60, slot=self.mouseMoveEvent)
@@ -137,6 +151,10 @@ class EasyQC(QtWidgets.QMainWindow):
         self.label_t.setText(f"{t:.4f}")
         self.label_amp.setText(f"{a:2.2E}")
         self.label_h.setText(f"{h:.4f}")
+        if self.plotWidget_hoverTrace is not None and self.plotWidget_hoverTrace:
+            self.ctrl.update_ViewTrace(qpoint)
+
+
 
     def translate_seismic(self, k, cm):
         """
@@ -195,6 +213,12 @@ class EasyQC(QtWidgets.QMainWindow):
         r = self.viewBox_seismic.viewRange()[1]
         y = float(self.verticalScrollBar.value()) / 65536 * (l[1] - l[0]) + l[0]
         self.viewBox_seismic.setYRange(y, y + r[1] - r[0], padding=0)
+
+    def cmenu_ViewTrace(self):
+        if self.plotWidget_hoverTrace is None:
+            self.plotWidget_hoverTrace = pg.plot([0], [0], pen=pg.mkPen(color=COLOR_PLOTS[0]))
+            self.plotWidget_hoverTrace.setBackground(pg.mkColor('#ffffff'))
+        self.plotWidget_hoverTrace.setVisible(True)
 
 
 class Controller:
@@ -333,7 +357,7 @@ class Controller:
         else:
             ValueError('taxis must be 0 (horizontal axis) or 1 (vertical axis)')
         self.transform = np.array(transform).reshape((3, 3)).T
-        self.view.imageItem_seismic.setTransform(QTransform(*transform))
+        self.view.imageItem_seismic.setTransform(QtGui.QTransform(*transform))
         self.view.plotItem_header_h.setLimits(xMin=xlim[0], xMax=xlim[1])
         self.view.plotItem_header_v.setLimits(yMin=ylim[0], yMax=ylim[1])
         self.view.plotItem_seismic.setLimits(xMin=xlim[0], xMax=xlim[1], yMin=ylim[0], yMax=ylim[1])
@@ -349,6 +373,28 @@ class Controller:
         self.set_gain(gain=gain)
         self.set_header()
 
+    def update_ViewTrace(self, qpoint):
+        c, _, _, _ = self.cursor2timetraceamp(qpoint)
+        plotitem = self.view.plotWidget_hoverTrace.getPlotItem()
+        plotitem.items[0].setData(self.model.tscale, self.model.get_trace(c))
+        plotitem.setXRange(*self.trange)
+
+    @property
+    def trange(self):
+        """
+        returns the current time range of the view
+        :return: 2 floats list
+        """
+        return self.view.viewBox_seismic.viewRange()[self.model.taxis]
+
+    @property
+    def crange(self):
+        """
+        returns the current channel range of the view
+        :return: 2 floats list
+        """
+        return self.view.viewBox_seismic.viewRange()[self.model.caxis]
+
 
 @dataclass
 class Model:
@@ -356,6 +402,17 @@ class Model:
     data: np.array
     header: np.array
     si: float = 1.
+
+    def auto_gain(self) -> float:
+        rmsnan = np.nansum(self.data ** 2, axis=self.taxis) / np.sum(
+            ~np.isnan(self.data), axis=self.taxis)
+        return 20 * np.log10(np.median(np.sqrt(rmsnan)))
+
+    def get_trace(self, c, xrange=None):
+        if self.caxis == 0:
+            return self.data[int(c), :]
+        else:
+            return self.data[:, int(c)]
 
     def set_data(self, data, header=None, si=None, t0=0, x0=0, taxis=1):
         assert header or si
@@ -384,10 +441,10 @@ class Model:
         if header is not None:
             self.header.update(header)
 
-    def auto_gain(self) -> float:
-        rmsnan = np.nansum(self.data ** 2, axis=self.taxis) / np.sum(
-            ~np.isnan(self.data), axis=self.taxis)
-        return 20 * np.log10(np.median(np.sqrt(rmsnan)))
+    @property
+    def tscale(self):
+        return np.arange(self.ns) * self.si + self.t0
+
 
 
 def viewseis(w=None, si=.002, h=None, title=None, t0=0, x0=0, taxis=1):
