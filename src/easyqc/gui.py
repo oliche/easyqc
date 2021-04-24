@@ -89,16 +89,24 @@ class EasyQC(QtWidgets.QMainWindow):
         :param e:
         """
         k, m = (e.key(), e.modifiers())
-        if k == QtCore.Qt.Key_PageUp or (  # page up / ctrl + a
+        # page up / ctrl + a
+        if k == QtCore.Qt.Key_PageUp or (
                 m == QtCore.Qt.ControlModifier and k == QtCore.Qt.Key_A):
             self.ctrl.set_gain(self.ctrl.gain - 3)
-        elif k == QtCore.Qt.Key_PageDown or (  # page down / ctrl + z
+        # page down / ctrl + z
+        elif k == QtCore.Qt.Key_PageDown or (
                 m == QtCore.Qt.ControlModifier and k == QtCore.Qt.Key_Z):
             self.ctrl.set_gain(self.ctrl.gain + 3)
+        # control + P: propagate
         elif m == QtCore.Qt.ControlModifier and k == QtCore.Qt.Key_P:
             self.ctrl.propagate()
+        # arrows keys move seismic
         elif k in (QtCore.Qt.Key_Up, QtCore.Qt.Key_Left, QtCore.Qt.Key_Right, QtCore.Qt.Key_Down):
             self.translate_seismic(k, m == QtCore.Qt.ControlModifier)
+        # ctrl + s: screenshot to clipboard
+        elif m == QtCore.Qt.ControlModifier and k == QtCore.Qt.Key_S:
+            qtapp = QtWidgets.QApplication.instance()
+            qtapp.clipboard().setPixmap(self.grab())
 
     def editGain(self):
         try:

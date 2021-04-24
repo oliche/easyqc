@@ -1,4 +1,5 @@
 # Release Notes
+-   ctrl + s: save screenshot to clipboard
 
 ###  0.2.0 - 2020-04-13
 -   option for transposed display (horizontal time-scale)
