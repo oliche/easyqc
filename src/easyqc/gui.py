@@ -320,7 +320,11 @@ class Controller:
 
     def redraw(self):
         """ redraw seismic and headers with order and selection"""
-        self.view.imageItem_seismic.setImage(self.model.data[self.trace_indices, :])
+        # np.take could look neater but it's actually much slower than straight indexing
+        if self.model.taxis == 1:
+            self.view.imageItem_seismic.setImage(self.model.data[self.trace_indices, :])
+        elif self.model.taxis == 0:
+            self.view.imageItem_seismic.setImage(self.model.data[:, self.trace_indices])
         self.set_header()
         self.set_gain()
 
@@ -443,8 +447,9 @@ class Model:
     def get_trace_spectrogram(self, c, trange=None):
         from scipy.signal import spectrogram
         tr = self.get_trace(c, trange=trange)
-        fscale, tscale, tf = spectrogram(tr, fs=1 / self.si, nperseg=200, nfft=512, window='cosine', noverlap=195)
-        tf = 20 * np.log10(tf - np.finfo(float).eps)
+        fscale, tscale, tf = spectrogram(tr, fs=1 / self.si, nperseg=50, nfft=512, window='cosine', noverlap=48)
+        tscale += trange[0]
+        tf = 20 * np.log10(tf + np.finfo(float).eps)
         return fscale, tscale, tf
 
     def get_trace_spectrum(self, c, trange=None):
@@ -460,7 +465,9 @@ class Model:
         :return:
         """
         if trange is not None:
-            sl = slice(int(trange[0] / self.si), int(trange[1] / self.si))
+            first_s = int((trange[0] - self.t0) / self.si)
+            last_s = int((trange[1] - self.t0) / self.si)
+            sl = slice(first_s, last_s)
         else:
             sl = slice(None)
         if self.caxis == 0:
