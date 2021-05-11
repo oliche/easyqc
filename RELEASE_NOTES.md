@@ -1,6 +1,7 @@
-# Release Notes Dev
+### 0.3.0 - 2020-05-11
 -   ctrl + s: save screenshot to clipboard
 -   trace, spectrum, spectrogram view with mouse hover
+-   horizontal trace view displays
 
 ###  0.2.0 - 2020-04-13
 -   option for transposed display (horizontal time-scale)
