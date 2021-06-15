@@ -134,11 +134,7 @@ class EasyQC(QtWidgets.QMainWindow):
             qtapp.clipboard().setPixmap(self.grab())
 
     def editGain(self):
-        try:
-            gain = float(self.lineEdit_gain.text())
-        except ValueError():
-            pass  # tddo set colour self.lineEdit_gain
-        self.ctrl.set_gain(gain)
+        self.ctrl.set_gain()
 
     def editSort(self):
         keys = self.lineEdit_sort.text().split(' ')
@@ -252,7 +248,6 @@ class Controller:
         self.model = Model(None, None)
         self.order = None
         self.transform = None  # affine transform image indices 2 data domain
-        self.gain = None
         self.trace_indices = None
         self.hkey = None
 
@@ -331,11 +326,13 @@ class Controller:
     def set_gain(self, gain=None):
         if gain is None:
             gain = self.gain
-        else:
-            self.gain = gain
-        levels = 10 ** (self.gain / 20) * 4 * np.array([-1, 1])
+        levels = 10 ** (gain / 20) * 4 * np.array([-1, 1])
         self.view.imageItem_seismic.setLevels(levels)
         self.view.lineEdit_gain.setText(f"{gain:.1f}")
+
+    @property
+    def gain(self):
+        return float(self.view.lineEdit_gain.text()) or self.model.auto_gain()
 
     def set_header(self):
         key = self.view.comboBox_header.currentText()
@@ -366,10 +363,11 @@ class Controller:
         """
         # reshape a 3d+ array in 2d to plot as an image
         self.remove_all_layers()
+        # if the data has the same shape as the current model data, keep axis all the same
+        update_axis = self.model.data is None or self.model.data.shape != data.shape
         if data.ndim >= 3:
             data = np.reshape(data, (-1, data.shape[-1]))
         self.model.set_data(data, si=si, header=h, x0=x0, t0=t0, taxis=taxis)
-        self.gain = gain or self.model.auto_gain()
         self.trace_indices = np.arange(self.model.ntr)  # this will contain selection and sort
         clim = [x0 - .5, x0 + self.model.ntr - .5]
         tlim = [t0, t0 + self.model.ns * self.model.si]
@@ -390,9 +388,10 @@ class Controller:
         self.view.plotItem_header_v.setLimits(yMin=ylim[0], yMax=ylim[1])
         self.view.plotItem_seismic.setLimits(xMin=xlim[0], xMax=xlim[1], yMin=ylim[0], yMax=ylim[1])
         # reset the view
-        xlim, ylim = self.limits()
-        self.view.viewBox_seismic.setXRange(*xlim, padding=0)
-        self.view.viewBox_seismic.setYRange(*ylim, padding=0)
+        if update_axis:
+            xlim, ylim = self.limits()
+            self.view.viewBox_seismic.setXRange(*xlim, padding=0)
+            self.view.viewBox_seismic.setYRange(*ylim, padding=0)
         # set the header combo box keys
         if isinstance(self.model.header, dict):
             self.view.comboBox_header.clear()
