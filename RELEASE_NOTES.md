@@ -1,3 +1,6 @@
+### 0.4.0 - 2020-06-15
+-   keep axis/gain the same when refreshing data
+
 ### 0.3.0 - 2020-05-11
 -   ctrl + s: save screenshot to clipboard
 -   trace, spectrum, spectrogram view with mouse hover
