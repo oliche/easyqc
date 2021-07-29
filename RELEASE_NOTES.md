@@ -1,3 +1,6 @@
+### 0.4.1 - 2020-07-29
+-   bugfix: QQaction is found in a different package in new Pyqt versions
+
 ### 0.4.0 - 2020-06-15
 -   keep axis/gain the same when refreshing data
 

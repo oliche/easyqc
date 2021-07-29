@@ -79,7 +79,7 @@ class EasyQC(QtWidgets.QMainWindow):
 
     def _init_cmenu(self):
         """
-        Setup context menus - on instanciation only
+        Setup context menus - on instantiation only
         """
         self.viewBox_seismic.scene().contextMenu = None  # this gets rid of the export context menu
         self.plotItem_seismic.plotItem.ctrlMenu = None  # this gets rid of the plot context menu
@@ -89,13 +89,13 @@ class EasyQC(QtWidgets.QMainWindow):
             self.viewBox_seismic.menu.removeAction(act)
         # and add ours
         self.viewBox_seismic.menu.addSeparator()
-        act = QtGui.QAction("View Trace", self.viewBox_seismic.menu)
+        act = QtWidgets.QAction("View Trace", self.viewBox_seismic.menu)
         act.triggered.connect(self.cmenu_ViewTrace)
         self.viewBox_seismic.menu.addAction(act)
-        act = QtGui.QAction("View Spectrum", self.viewBox_seismic.menu)
+        act = QtWidgets.QAction("View Spectrum", self.viewBox_seismic.menu)
         act.triggered.connect(self.cmenu_ViewSpectrum)
         self.viewBox_seismic.menu.addAction(act)
-        act = QtGui.QAction("View Spectrogram", self.viewBox_seismic.menu)
+        act = QtWidgets.QAction("View Spectrogram", self.viewBox_seismic.menu)
         act.triggered.connect(self.cmenu_ViewSpectrogram)
         self.viewBox_seismic.menu.addAction(act)
 
