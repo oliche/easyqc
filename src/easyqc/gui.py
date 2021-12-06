@@ -157,7 +157,8 @@ class EasyQC(QtWidgets.QMainWindow):
         self.label_x.setText(f"{c:.0f}")
         self.label_t.setText(f"{t:.4f}")
         self.label_amp.setText(f"{a:2.2E}")
-        self.label_h.setText(f"{h:.4f}")
+        htxt = h if isinstance(h, str) else f"{h:.4f}"
+        self.label_h.setText(htxt)
         for key in self.hoverPlotWidgets:
             if self.hoverPlotWidgets[key] is not None and self.hoverPlotWidgets[key].isVisible():
                 self.ctrl.update_hover(qpoint, key)
@@ -341,6 +342,9 @@ class Controller:
         self.hkey = key
         traces = np.arange(self.trace_indices.size)
         values = self.model.header[self.hkey][self.trace_indices]
+        # skip the plotting part for non-numeric arrays
+        if not np.issubdtype(values.dtype, np.number):
+            return
         if self.model.taxis == 1:
             self.view.plotDataItem_header_h.setData(x=traces, y=values)
         elif self.model.taxis == 0:
