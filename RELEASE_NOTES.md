@@ -1,3 +1,6 @@
+### 0.5.0 not released yet
+-   support for text headers
+
 ### 0.4.1 - 2020-07-29
 -   bugfix: QQaction is found in a different package in new Pyqt versions
 
