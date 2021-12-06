@@ -1,4 +1,4 @@
-### 0.5.0 not released yet
+### 0.5.0 - 2021-12-07 
 -   support for text headers
 
 ### 0.4.1 - 2020-07-29
