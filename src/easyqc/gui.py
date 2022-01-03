@@ -479,7 +479,7 @@ class Model:
             return self.data[sl, int(c)]
 
     def set_data(self, data, header=None, si=None, t0=0, x0=0, taxis=1):
-        assert header or si
+        assert (header is not None) or si
         # intrinsic data
         self.x0 = x0
         self.t0 = t0
