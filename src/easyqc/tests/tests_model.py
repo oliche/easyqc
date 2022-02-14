@@ -4,7 +4,7 @@ import scipy.signal
 
 
 def _synthetic_data(ntr=500, ns=2000):
-    dx, v1 = (5, 2000)
+    # dx, v1 = (5, 2000)
     data = np.zeros((ntr, ns), np.float32)
     data[:, 500:600] = scipy.signal.ricker(100, 4)
 

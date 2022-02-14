@@ -1,7 +1,6 @@
 import sys  # We need sys so that we can pass argv to QApplication
 from pathlib import Path
 from dataclasses import dataclass
-from dataclasses import dataclass
 
 import numpy as np
 from PyQt5 import QtWidgets, QtCore, QtGui, uic
@@ -235,7 +234,8 @@ class EasyQC(QtWidgets.QMainWindow):
             else:
                 self.hoverPlotWidgets[key] = pg.plot([0], [0], pen=pg.mkPen(color=[180, 180, 180]), connect="finite")
                 self.hoverPlotWidgets[key].addItem(
-                    pg.PlotCurveItem([0], [0], pen=pg.mkPen(color=PARAMS_TRACE_PLOTS['color'], width=1), connect="finite"))
+                    pg.PlotCurveItem(
+                        [0], [0], pen=pg.mkPen(color=PARAMS_TRACE_PLOTS['color'], width=1), connect="finite"))
                 self.hoverPlotWidgets[key].addItem(
                     pg.PlotDataItem([0], [0], symbolPen=pg.mkPen(color=[255, 0, 0]), symbolSize=7, symbol='star'))
                 self.hoverPlotWidgets[key].setBackground(pg.mkColor('#ffffff'))
