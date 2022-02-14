@@ -1,5 +1,5 @@
 ### 0.6.1 - 2022-02-14
-
+-   application management
 -   support for dataframe headers
 -   trace view shows neighbours
 
