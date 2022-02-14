@@ -108,6 +108,8 @@ class EasyQC(QtWidgets.QMainWindow):
     """
     def closeEvent(self, event):
         self.destroy()
+        if self.QT_APP is not None:
+            self.QT_APP.quit()
 
     def keyPressEvent(self, e):
         """
@@ -257,7 +259,7 @@ class Controller:
         self.view = view
         self.model = Model(None, None)
         self.order = None
-        self.transform = None  # affine transform image indices 2 data domain
+        self.transform = np.eye(3)  # affine transform image indices 2 data domain
         self.trace_indices = None
         self.hkey = None
 
@@ -297,8 +299,8 @@ class Controller:
 
     def cursor2ind(self, qpoint):
         """ image coordinates over the seismic display"""
-        ix = int(np.maximum(0, np.minimum(qpoint.x() - self.transform[1, 2], self.model.nx)))
-        iy = int(np.maximum(0, np.minimum(qpoint.y() - self.transform[1, 1], self.model.ny)))
+        ix = int(np.maximum(0, np.minimum(qpoint.x() - self.transform[1, 2], self.model.nx - 1)))
+        iy = int(np.maximum(0, np.minimum(qpoint.y() - self.transform[1, 1], self.model.ny - 1)))
         return ix, iy
 
     def limits(self):
@@ -457,6 +459,8 @@ class Model:
     data: np.array
     header: np.array
     si: float = 1.
+    nx: int = 1
+    ny: int = 1
 
     def auto_gain(self) -> float:
         rmsnan = np.nansum(self.data ** 2, axis=self.taxis) / np.sum(
@@ -542,7 +546,6 @@ def viewseis(w=None, si=.002, h=None, title=None, t0=0, x0=0, taxis=1):
     eqc = EasyQC._get_or_create(title=title)
     if w is not None:
         eqc.ctrl.update_data(w, h=h, si=si, t0=t0, x0=x0, taxis=taxis)
-    eqc.QT_APP = app
     eqc.show()
     return eqc
 
