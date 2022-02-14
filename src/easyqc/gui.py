@@ -1,6 +1,7 @@
 import sys  # We need sys so that we can pass argv to QApplication
 from pathlib import Path
 from dataclasses import dataclass
+from dataclasses import dataclass
 
 import numpy as np
 from PyQt5 import QtWidgets, QtCore, QtGui, uic

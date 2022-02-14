@@ -1,3 +1,7 @@
+### 0.6.0 - 2022-02-14
+-   support for dataframe headers
+-   trace view shows neighbours
+
 ### 0.5.0 - 2021-12-07 
 -   support for text headers
 
