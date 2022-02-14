@@ -1,6 +1,7 @@
 import sys  # We need sys so that we can pass argv to QApplication
 from pathlib import Path
 from dataclasses import dataclass
+from dataclasses import dataclass
 
 import numpy as np
 from PyQt5 import QtWidgets, QtCore, QtGui, uic
@@ -9,7 +10,10 @@ import pyqtgraph as pg
 
 import easyqc.qt
 
-COLOR_PLOTS = (pg.mkColor((31, 119, 180)),)
+PARAMS_TRACE_PLOTS = {
+    'neighbors': 2,
+    'color': pg.mkColor((31, 119, 180)),
+}
 
 
 class EasyQC(QtWidgets.QMainWindow):
@@ -17,6 +21,7 @@ class EasyQC(QtWidgets.QMainWindow):
     This is the view in the MVC approach
     """
     layers = None  # used for additional scatter layers
+    QT_APP = None
 
     @staticmethod
     def _instances():
@@ -228,7 +233,11 @@ class EasyQC(QtWidgets.QMainWindow):
             if image:
                 self.hoverPlotWidgets[key] = ImShowItem().plotwidget
             else:
-                self.hoverPlotWidgets[key] = pg.plot([0], [0], pen=pg.mkPen(color=COLOR_PLOTS[0]))
+                self.hoverPlotWidgets[key] = pg.plot([0], [0], pen=pg.mkPen(color=[180, 180, 180]), connect="finite")
+                self.hoverPlotWidgets[key].addItem(
+                    pg.PlotCurveItem([0], [0], pen=pg.mkPen(color=PARAMS_TRACE_PLOTS['color'], width=1), connect="finite"))
+                self.hoverPlotWidgets[key].addItem(
+                    pg.PlotDataItem([0], [0], symbolPen=pg.mkPen(color=[255, 0, 0]), symbolSize=7, symbol='star'))
                 self.hoverPlotWidgets[key].setBackground(pg.mkColor('#ffffff'))
         self.hoverPlotWidgets[key].setVisible(True)
 
@@ -280,16 +289,16 @@ class Controller:
           amplitude,and header"""
         ixy = self.cursor2ind(qpoint)
         a = self.model.data[ixy[0], ixy[1]]
-        xy_ = np.matmul(self.transform, np.array([ixy[0], ixy[1], 1]))
+        xy_ = np.matmul(self.transform, np.array([qpoint.x(), qpoint.y(), 1]))
         t = xy_[self.model.taxis]
-        c = xy_[self.model.caxis]
+        c = ixy[self.model.caxis]
         h = self.model.header[self.hkey][ixy[self.model.caxis]]
         return c, t, a, h
 
     def cursor2ind(self, qpoint):
         """ image coordinates over the seismic display"""
-        ix = np.max((0, np.min((int(np.floor(qpoint.x())), self.model.nx - 1))))
-        iy = np.max((0, np.min((int(np.round(qpoint.y())), self.model.ny - 1))))
+        ix = int(np.maximum(0, np.minimum(qpoint.x() - self.transform[1, 2], self.model.nx)))
+        iy = int(np.maximum(0, np.minimum(qpoint.y() - self.transform[1, 1], self.model.ny)))
         return ix, iy
 
     def limits(self):
@@ -405,10 +414,17 @@ class Controller:
         self.set_header()
 
     def update_hover(self, qpoint, key):
-        c, _, _, _ = self.cursor2timetraceamp(qpoint)
+        c, t, a, _ = self.cursor2timetraceamp(qpoint)
         if key == 'Trace':
             plotitem = self.view.hoverPlotWidgets[key].getPlotItem()
-            plotitem.items[0].setData(self.model.tscale, self.model.get_trace(c))
+            traces = self.model.get_trace(c, neighbors=PARAMS_TRACE_PLOTS['neighbors'])
+            nc = traces.shape[1]
+            xdata = np.tile(np.r_[self.model.tscale, np.nan], nc).T
+            ydata = np.r_[traces, np.ones((1, nc)) * np.nan].T
+            plotitem.items[0].setData(xdata.flatten(), ydata.flatten())
+            trace = self.model.get_trace(c)
+            plotitem.items[1].setData(self.model.tscale, trace)
+            plotitem.items[2].setData([t], [a])
             plotitem.setXRange(*self.trange)
         elif key == 'Spectrum':
             plotitem = self.view.hoverPlotWidgets[key].getPlotItem()
@@ -455,18 +471,20 @@ class Model:
         tf = 20 * np.log10(tf + np.finfo(float).eps)
         return fscale, tscale, tf
 
-    def get_trace_spectrum(self, c, trange=None):
-        tr = self.get_trace(c, trange=trange)
+    def get_trace_spectrum(self, c, trange=None, neighbors=0):
+        tr = self.get_trace(c, trange=trange, neighbors=neighbors)
         psd = 20 * np.log10(np.abs(np.fft.rfft(tr)) - np.finfo(float).eps)
         return np.fft.rfftfreq(tr.size, self.si), psd
 
-    def get_trace(self, c, trange=None):
+    def get_trace(self, c, trange=None, neighbors=0):
         """
         Get trace according to index, taking into account the orientation of the model
         :param c: trace index
         :param trange: time-range (secs)
-        :return:
+        :return: np.array of size (ns, nc)
         """
+        trsel = np.arange(-neighbors, neighbors + 1) + int(np.floor(c))
+        trsel = trsel[np.logical_and(trsel < self.ntr, trsel >= 0)]
         if trange is not None:
             first_s = int((trange[0] - self.t0) / self.si)
             last_s = int((trange[1] - self.t0) / self.si)
@@ -474,12 +492,12 @@ class Model:
         else:
             sl = slice(None)
         if self.caxis == 0:
-            return self.data[int(c), sl]
+            return np.squeeze(self.data[trsel, sl].T)
         else:
-            return self.data[sl, int(c)]
+            return np.squeeze(self.data[sl, trsel])
 
     def set_data(self, data, header=None, si=None, t0=0, x0=0, taxis=1):
-        assert header or si
+        assert (header is not None) or si
         # intrinsic data
         self.x0 = x0
         self.t0 = t0
@@ -520,10 +538,11 @@ def viewseis(w=None, si=.002, h=None, title=None, t0=0, x0=0, taxis=1):
     :param title: Tag for the window.
     :return: EasyQC object
     """
-    easyqc.qt.create_app()
+    app = easyqc.qt.create_app()
     eqc = EasyQC._get_or_create(title=title)
     if w is not None:
         eqc.ctrl.update_data(w, h=h, si=si, t0=t0, x0=x0, taxis=taxis)
+    eqc.QT_APP = app
     eqc.show()
     return eqc
 
