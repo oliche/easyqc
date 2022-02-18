@@ -1,3 +1,6 @@
+### Main
+-   shift + P puts windows side by side two by two
+
 ### 0.6.1 - 2022-02-14
 -   application management
 -   support for dataframe headers

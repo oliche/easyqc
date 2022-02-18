@@ -129,6 +129,8 @@ class EasyQC(QtWidgets.QMainWindow):
                 m == QtCore.Qt.ControlModifier and k == QtCore.Qt.Key_Z):
             self.ctrl.set_gain(self.ctrl.gain + 3)
         # control + P: propagate
+        elif m == QtCore.Qt.ShiftModifier and k == QtCore.Qt.Key_P:
+            self.ctrl.propagate(explode=True)
         elif m == QtCore.Qt.ControlModifier and k == QtCore.Qt.Key_P:
             self.ctrl.propagate()
         # arrows keys move seismic
@@ -310,10 +312,15 @@ class Controller:
         x, y, _ = np.matmul(self.transform, np.c_[ixlim, iylim, [1, 1]].T)
         return x, y
 
-    def propagate(self):
-        """ set all the eqc instances at the same position/gain scales for flip comparisons """
+    def propagate(self, explode=False):
+        """
+        set all the eqc instances at the same position/gain scales for flip comparisons
+        If explodes is set to True, splits windows in groups of two side by side
+        """
         eqcs = self.view._instances()
-        for eqc in eqcs:
+        if len(eqcs) == 1:
+            return
+        for i, eqc in enumerate(eqcs):
             if eqc is self.view:
                 continue
             else:
@@ -321,9 +328,17 @@ class Controller:
                 eqc.ctrl.set_gain(self.gain)
                 eqc.plotItem_seismic.setXLink(self.view.plotItem_seismic)
                 eqc.plotItem_seismic.setYLink(self.view.plotItem_seismic)
+                # eqc.plotItem_seismic.setXLink(eqc.plotItem_header_h)
+                # eqc.plotItem_seismic.setYLink(eqc.plotItem_header_v)
                 # also propagate sorting
                 eqc.lineEdit_sort.setText(self.view.lineEdit_sort.text())
                 eqc.ctrl.sort(eqc.lineEdit_sort.text())
+            # every odd figure is shifted alongside the first one
+            if explode and i % 2 == 1:
+                rect = self.view.geometry()
+                if i % 2 == 1:
+                    rect.translate(rect.width(), 0)
+                eqc.setGeometry(rect)
 
     def redraw(self):
         """ redraw seismic and headers with order and selection"""
@@ -542,7 +557,7 @@ def viewseis(w=None, si=.002, h=None, title=None, t0=0, x0=0, taxis=1):
     :param title: Tag for the window.
     :return: EasyQC object
     """
-    app = easyqc.qt.create_app()
+    # app = easyqc.qt.create_app()
     eqc = EasyQC._get_or_create(title=title)
     if w is not None:
         eqc.ctrl.update_data(w, h=h, si=si, t0=t0, x0=x0, taxis=taxis)
@@ -552,5 +567,5 @@ def viewseis(w=None, si=.002, h=None, title=None, t0=0, x0=0, taxis=1):
 
 if __name__ == '__main__':
     eqc = viewseis(None)
-    app = pg.Qt.mkQApp()
+    app = pg.Qt.mkQApp()    
     sys.exit(app.exec_())
