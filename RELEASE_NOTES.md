@@ -1,4 +1,5 @@
-### Main
+### 0.6.2 - 2022-02-21
+-   changes to the qt app management
 -   shift + P puts windows side by side two by two
 
 ### 0.6.1 - 2022-02-14

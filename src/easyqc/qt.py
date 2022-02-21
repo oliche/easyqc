@@ -1,5 +1,4 @@
 import logging
-import sys
 from functools import wraps
 
 from PyQt5 import QtWidgets
@@ -18,7 +17,7 @@ def create_app():
     global QT_APP
     QT_APP = QtWidgets.QApplication.instance()
     if QT_APP is None:  # pragma: no cover
-        QT_APP = QtWidgets.QApplication(sys.argv)
+        QT_APP = QtWidgets.QApplication([])
     return QT_APP
 
 

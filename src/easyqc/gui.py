@@ -7,8 +7,6 @@ from PyQt5 import QtWidgets, QtCore, QtGui, uic
 
 import pyqtgraph as pg
 
-import easyqc.qt
-
 PARAMS_TRACE_PLOTS = {
     'neighbors': 2,
     'color': pg.mkColor((31, 119, 180)),
@@ -106,11 +104,6 @@ class EasyQC(QtWidgets.QMainWindow):
     """
     View Methods
     """
-    def closeEvent(self, event):
-        self.destroy()
-        if self.QT_APP is not None:
-            self.QT_APP.quit()
-
     def keyPressEvent(self, e):
         """
         page-up / ctrl + a :  gain up
@@ -567,5 +560,5 @@ def viewseis(w=None, si=.002, h=None, title=None, t0=0, x0=0, taxis=1):
 
 if __name__ == '__main__':
     eqc = viewseis(None)
-    app = pg.Qt.mkQApp()    
+    app = pg.Qt.mkQApp()
     sys.exit(app.exec_())
