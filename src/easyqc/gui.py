@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import numpy as np
 from PyQt5 import QtWidgets, QtCore, QtGui, uic
 
-import qt
+import easyqc.qt as qt
 import pyqtgraph as pg
 
 PARAMS_TRACE_PLOTS = {
