@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import numpy as np
 from PyQt5 import QtWidgets, QtCore, QtGui, uic
 
+import qt
 import pyqtgraph as pg
 
 PARAMS_TRACE_PLOTS = {
@@ -23,6 +24,8 @@ class EasyQC(QtWidgets.QMainWindow):
     @staticmethod
     def _instances():
         app = QtWidgets.QApplication.instance()
+        if app is None:
+            app = qt.create_app()
         return [w for w in app.topLevelWidgets() if isinstance(w, EasyQC)]
 
     @staticmethod
