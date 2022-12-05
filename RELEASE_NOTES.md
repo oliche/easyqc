@@ -1,3 +1,6 @@
+### 0.7.0 - not released yet
+-   colormaps !
+
 ### 0.6.3 - 2022-02-21
 -   bugfix qt app management
 

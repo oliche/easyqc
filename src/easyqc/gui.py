@@ -51,6 +51,7 @@ class EasyQC(QtWidgets.QMainWindow):
         self.plotItem_seismic.setBackground(background_color)
         self.plotItem_seismic.addItem(self.imageItem_seismic)
         self.viewBox_seismic = self.plotItem_seismic.getPlotItem().getViewBox()
+        self._init_menu()
         self._init_cmenu()
         # init the header display and link X and Y axis with density display
         self.plotDataItem_header_h = pg.PlotDataItem()
@@ -81,6 +82,13 @@ class EasyQC(QtWidgets.QMainWindow):
         self.viewBox_seismic.sigRangeChanged.connect(self.on_sigRangeChanged)
         self.horizontalScrollBar.sliderMoved.connect(self.on_horizontalSliderChange)
         self.verticalScrollBar.sliderMoved.connect(self.on_verticalSliderChange)
+
+    def _init_menu(self):
+        # pre-defined colormaps
+        self.actionColormap_CET_D6.triggered.connect(lambda: self.setColorMap('CET-D6'))
+        self.actionColormap_CET_D1.triggered.connect(lambda: self.setColorMap('CET-D1'))
+        self.actionColormap_CET_L2.triggered.connect(lambda: self.setColorMap('CET-L2'))
+        self.actionColormap_MPL_PuOr.triggered.connect(lambda: self.setColorMap('PuOr'))
 
     def _init_cmenu(self):
         """
@@ -250,6 +258,16 @@ class EasyQC(QtWidgets.QMainWindow):
     def cmenu_ViewSpectrogram(self):
         self._cmenu_hover('Spectrogram', image=True)
 
+    def setColorMap(self, cmap):
+        """
+        Set the colormap for the seismic display - useful for the propagation feature
+        :param cmap:
+        :return:
+        """
+        if isinstance(cmap, str) and cmap not in pg.colormap.listMaps():
+            cmap = pg.colormap.getFromMatplotlib(cmap)
+        self.imageItem_seismic.setColorMap(cmap)
+
 
 class Controller:
 
@@ -320,6 +338,7 @@ class Controller:
             if eqc is self.view:
                 continue
             else:
+                eqc.setColorMap(self.view.imageItem_seismic.getColorMap() or 'CET-L2')
                 eqc.setGeometry(self.view.geometry())
                 eqc.ctrl.set_gain(self.gain)
                 eqc.plotItem_seismic.setXLink(self.view.plotItem_seismic)
