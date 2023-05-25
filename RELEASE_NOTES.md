@@ -1,6 +1,7 @@
-### 0.7.0 - not released yet
--   colormaps !
-
+### 0.7.0 - 2023-05-25
+-   colormaps
+-   ctrl + s: save screenshot to file only include the plot area
+  
 ### 0.6.3 - 2022-02-21
 -   bugfix qt app management
 

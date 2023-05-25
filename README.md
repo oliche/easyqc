@@ -10,6 +10,7 @@ NB: if you use `ipython` use the `%gui qt` magic command before !
 -   **ctrl + Z**: deacrease display gain by +3dB
 -   **ctrl + P**: take screenshot to clipboard
 -   **ctrl + P**: propagates display accross all windows (same window size, same axis, same gain)
+-   **ctrl + S**: captures screenshot of the plot area in the clipboard
 -   **up/down/right/left arrows**: pan using keyboard
 
 ### Minimum working example to display a numpy array.

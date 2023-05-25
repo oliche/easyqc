@@ -143,7 +143,7 @@ class EasyQC(QtWidgets.QMainWindow):
         # ctrl + s: screenshot to clipboard
         elif m == QtCore.Qt.ControlModifier and k == QtCore.Qt.Key_S:
             qtapp = QtWidgets.QApplication.instance()
-            qtapp.clipboard().setPixmap(self.grab())
+            qtapp.clipboard().setPixmap(self.plotItem_seismic.grab())
 
     def editGain(self):
         self.ctrl.set_gain()
