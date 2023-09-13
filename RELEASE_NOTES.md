@@ -1,3 +1,6 @@
+### 0.8.0 - 2023-09-13
+-   add snapshot method to save figure to disk
+ 
 ### 0.7.0 - 2023-05-25
 -   colormaps
 -   ctrl + s: save screenshot to file only include the plot area

@@ -391,6 +391,27 @@ class Controller:
         elif self.model.taxis == 0:
             self.view.plotDataItem_header_v.setData(y=traces, x=values)
 
+    def snapshot(self, file, xrange=None, yrange=None, gain=None, window_size=None):
+        """
+        Saves a snapshot of the current view to a file
+        :param file: str or pathlib.Path
+        :param xrange: range of the horizontal axis in data space
+        :param yrange: range of the vertical axis in data space
+        :param gain: gain of the raster in dB
+        :param window_size: tuple of width and height in pixels
+        :return:
+        """
+        if yrange is not None:
+            self.view.viewBox_seismic.setYRange(*yrange)
+        if xrange is not None:
+            self.view.viewBox_seismic.setXRange(*xrange)
+        if gain is not None:
+            self.set_gain(gain)
+        if window_size is not None:
+            self.view.resize(*window_size)
+        self.view.grab().save(str(file))
+
+
     def sort(self, keys):
         if not(set(keys).issubset(set(self.model.header.keys()))):
             print("Wrong input")
