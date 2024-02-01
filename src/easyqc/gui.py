@@ -7,6 +7,7 @@ from PyQt5 import QtWidgets, QtCore, QtGui, uic
 
 import easyqc.qt as qt
 import pyqtgraph as pg
+from easyqc.pgtools import ImShowSpectrogram
 
 PARAMS_TRACE_PLOTS = {
     'neighbors': 2,
@@ -236,9 +237,8 @@ class EasyQC(QtWidgets.QMainWindow):
     def _cmenu_hover(self, key, image=False):
         """Creates the plot widget for a given key: could be 'Trace', 'Spectrum', or 'Spectrogram'"""
         if self.hoverPlotWidgets[key] is None:
-            from easyqc.pgtools import ImShowItem
-            if image:
-                self.hoverPlotWidgets[key] = ImShowItem().plotwidget
+            if image and key == 'Spectrogram':
+                self.hoverPlotWidgets[key] = ImShowSpectrogram().plotwidget
             else:
                 self.hoverPlotWidgets[key] = pg.plot([0], [0], pen=pg.mkPen(color=[180, 180, 180]), connect="finite")
                 self.hoverPlotWidgets[key].addItem(

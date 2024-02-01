@@ -7,7 +7,10 @@ import numpy as np
 
 
 class ImShowItem(object):
-    def __init__(self, *args, **kwargs):
+    """
+    This class is a wrapper around the pyqtgraph ImageItem class to display images in a pyqtgraph plotwidget.
+    """
+    def __init__(self, *args, key='spectrogram', **kwargs):
         self.plotwidget = pg.PlotWidget()
         self.plotitem = self.plotwidget.getPlotItem()
         self.imageitem = pg.ImageItem(np.zeros((2, 2)))
@@ -36,8 +39,14 @@ class ImShowItem(object):
     def set_colormap(self, colormap):
         if colormap not in Gradients.keys():
             ValueError(f"{colormap} is not a valid colormap, options are {Gradients.keys()}")
-        pgColormap = pg.ColorMap(*zip(*Gradients["viridis"]["ticks"]))
+        pgColormap = pg.ColorMap(*zip(*Gradients["magma"]["ticks"]))
         self.imageitem.setLookupTable(pgColormap.getLookupTable())
+
+class ImShowSpectrogram(ImShowItem):
+    """
+    Extends ImShowItem to display spectrograms.
+    """
+    pass
 
 
 def imshow(image: np.array, hscale: np.array = None, vscale: np.array = None,
