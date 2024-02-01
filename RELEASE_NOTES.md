@@ -1,3 +1,6 @@
+### 0.9.0 - 2024-02-01
+-   add spectrogram view with controls
+- 
 ### 0.8.0 - 2023-09-13
 -   add snapshot method to save figure to disk
  
