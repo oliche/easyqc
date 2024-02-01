@@ -7,6 +7,7 @@ from PyQt5 import QtWidgets, QtCore, QtGui, uic
 
 import easyqc.qt as qt
 import pyqtgraph as pg
+from easyqc.pgtools import ImShowSpectrogram
 
 PARAMS_TRACE_PLOTS = {
     'neighbors': 2,
@@ -236,9 +237,8 @@ class EasyQC(QtWidgets.QMainWindow):
     def _cmenu_hover(self, key, image=False):
         """Creates the plot widget for a given key: could be 'Trace', 'Spectrum', or 'Spectrogram'"""
         if self.hoverPlotWidgets[key] is None:
-            from easyqc.pgtools import ImShowItem
-            if image:
-                self.hoverPlotWidgets[key] = ImShowItem().plotwidget
+            if image and key == 'Spectrogram':
+                self.hoverPlotWidgets[key] = ImShowSpectrogram()
             else:
                 self.hoverPlotWidgets[key] = pg.plot([0], [0], pen=pg.mkPen(color=[180, 180, 180]), connect="finite")
                 self.hoverPlotWidgets[key].addItem(
@@ -411,7 +411,6 @@ class Controller:
             self.view.resize(*window_size)
         self.view.grab().save(str(file))
 
-
     def sort(self, keys):
         if not(set(keys).issubset(set(self.model.header.keys()))):
             print("Wrong input")
@@ -483,9 +482,7 @@ class Controller:
             plotitem = self.view.hoverPlotWidgets[key].getPlotItem()
             plotitem.items[0].setData(*self.model.get_trace_spectrum(c, trange=self.trange))
         elif key == 'Spectrogram':
-            imageshowitem = self.view.hoverPlotWidgets[key].imageshowitem
-            fscale, tscale, tf = self.model.get_trace_spectrogram(c, trange=self.trange)
-            imageshowitem.set_image(tf, tscale, fscale)
+            self.view.hoverPlotWidgets[key].set_data(self.model.get_trace(c), fs=1 / self.model.si)
 
     @property
     def trange(self):
