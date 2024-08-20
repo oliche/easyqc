@@ -1,3 +1,6 @@
+### 0.10.0 - 2024-08-20
+-   add `eqc.ctrl.add_curve` method
+
 ### 0.9.0 - 2024-02-01
 -   add spectrogram view with controls
 - 

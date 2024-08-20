@@ -27,6 +27,6 @@ def test_get_trace():
     model = Model(data=data, si=si, header=header)
     model.set_data(data=data, si=si, header=header)
 
-    assert(np.all(model.get_trace(50.02, neighbors=0).T == model.data[50, :]))
-    assert(np.all(model.get_trace(0.02, neighbors=1).T == model.data[:2, :]))
-    assert(np.all(model.get_trace(40.02, neighbors=1).T == model.data[39:42, :]))
+    assert (np.all(model.get_trace(50.02, neighbors=0).T == model.data[50, :]))
+    assert (np.all(model.get_trace(0.02, neighbors=1).T == model.data[:2, :]))
+    assert (np.all(model.get_trace(40.02, neighbors=1).T == model.data[39:42, :]))

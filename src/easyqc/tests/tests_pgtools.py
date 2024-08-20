@@ -12,7 +12,6 @@ self = pgtools.ImShowSpectrogram()
 self.set_data(w, 500)
 
 
-
 ## Test for imshowitem
 # Create spectrogram
 t = np.arange(2000) * .002

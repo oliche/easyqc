@@ -291,16 +291,28 @@ class Controller:
             self.view.plotItem_seismic.removeItem(current_layer['layer'])
             self.view.layers.pop(label)
 
-    def add_scatter(self, x, y, rgb=None, label='default'):
+    def _add_plotitem(self, plot_item_class, x, y, rgb=None, label='default'):
         """
-        Adds a scatter layer to the display (removing any previous one if any)
+        Generic way to add a plot item to the main seismic view
         """
-        rgb = rgb or (0, 255, 0)
+        rgb = (0, 255, 0) if rgb is None else rgb
         self.remove_layer_from_label(label)
-        new_scatter = pg.ScatterPlotItem()
+        new_scatter = plot_item_class()
         self.view.layers[label] = {'layer': new_scatter, 'type': 'scatter'}
         self.view.plotItem_seismic.addItem(new_scatter)
-        new_scatter.setData(x=x, y=y, brush=pg.mkBrush(rgb), name=label)
+        new_scatter.setData(x=x, y=y, brush=pg.mkBrush(rgb), name=label, pen=pg.mkPen(rgb))
+
+    def add_curve(self, *args, **kwargs):
+        """
+        Adds a curve layer to the display (removing any previous one with the same name if any)
+        """
+        self._add_plotitem(pg.PlotCurveItem, *args, **kwargs)
+
+    def add_scatter(self, *args, **kwargs):
+        """
+        Adds a sca layer to the display (removing any previous one with the same name if any)
+        """
+        self._add_plotitem(pg.ScatterPlotItem, *args, **kwargs)
 
     def cursor2timetraceamp(self, qpoint):
         """Used for the mouse hover function over seismic display, returns trace, time,
@@ -412,7 +424,7 @@ class Controller:
         self.view.grab().save(str(file))
 
     def sort(self, keys):
-        if not(set(keys).issubset(set(self.model.header.keys()))):
+        if not (set(keys).issubset(set(self.model.header.keys()))):
             print("Wrong input")
             return
         elif len(keys) == 0:
