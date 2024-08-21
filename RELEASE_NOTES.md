@@ -1,3 +1,6 @@
+### 1.0.0 - 2024-08-21
+-   released on pypi - uses pyproject.toml
+
 ### 0.10.0 - 2024-08-20
 -   add `eqc.ctrl.add_curve` method
 

@@ -77,20 +77,26 @@ And follow the install instructions above.
 
 
 ## Contribution
+`pdm` is used to manage the dependencies and the virtual environment. `pip install pdm` to install it.
 
-Pypi Release checklist:
+Pypi Release checklist
+- Update version in `pyproject.toml`
+- Flake `flake8`
+- publish on pypi:
 ```shell
-flake8
 rm -fR dist
-rm -fR build
-python setup.py sdist bdist_wheel
-twine upload dist/*
-#twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+rm -fR .pdm-build
+pdm publish
+```
+- tag the commit 
+```shell
+git tag -a 1.0.0
+git push origin 1.0.0
 ```
 
 Test wheel:
 ```shell
-virtualenv easyqc --python=3.8
+virtualenv easyqc --python=3.11
 source ./easyqc/bin/activate
 pip install easyqc
 #pip install -i https://test.pypi.org/simple/ easyqc  # doesnt' seem to install deps

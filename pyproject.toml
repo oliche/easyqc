@@ -1,0 +1,31 @@
+[project]
+name = "easyqc"
+version = "1.0.0"
+description = "Seismic viewer for numpy"
+readme = "README.md"
+authors = [
+    {name = "Olivier Winter"},
+]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "PyQt5",
+    "numpy",
+    "pyqtgraph>=0.13.1",
+    "scipy",
+]
+
+[project.urls]
+Homepage = "https://github.com/oliche/easyqc"
+"Bug Tracker" = "https://github.com/oliche/easyqc/issues"
+
+[tool.pdm]
+package-dir = "src"
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
