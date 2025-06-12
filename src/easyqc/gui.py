@@ -149,9 +149,9 @@ class EasyQC(QtWidgets.QMainWindow):
     def editGain(self):
         self.ctrl.set_gain()
 
-    def editSort(self):
+    def editSort(self, redraw=True):
         keys = self.lineEdit_sort.text().split(' ')
-        self.ctrl.sort(keys)
+        self.ctrl.sort(keys, redraw=redraw)
 
     def mouseClick(self, event):
         if not event.double():
@@ -291,7 +291,7 @@ class Controller:
             self.view.plotItem_seismic.removeItem(current_layer['layer'])
             self.view.layers.pop(label)
 
-    def _add_plotitem(self, plot_item_class, x, y, rgb=None, label='default'):
+    def _add_plotitem(self, plot_item_class, x, y, rgb=None, label='default', brush=None, pen=None, **kwargs):
         """
         Generic way to add a plot item to the main seismic view
         """
@@ -300,19 +300,22 @@ class Controller:
         new_scatter = plot_item_class()
         self.view.layers[label] = {'layer': new_scatter, 'type': 'scatter'}
         self.view.plotItem_seismic.addItem(new_scatter)
-        new_scatter.setData(x=x, y=y, brush=pg.mkBrush(rgb), name=label, pen=pg.mkPen(rgb))
+        brush = pg.mkBrush(rgb) if brush is None else brush
+        pen = pg.mkPen(rgb) if pen is None else pen
+        new_scatter.setData(x=x, y=y, brush=brush, name=label, pen=pen, **kwargs)
+        return new_scatter
 
     def add_curve(self, *args, **kwargs):
         """
         Adds a curve layer to the display (removing any previous one with the same name if any)
         """
-        self._add_plotitem(pg.PlotCurveItem, *args, **kwargs)
+        return self._add_plotitem(pg.PlotCurveItem, *args, **kwargs)
 
     def add_scatter(self, *args, **kwargs):
         """
         Adds a sca layer to the display (removing any previous one with the same name if any)
         """
-        self._add_plotitem(pg.ScatterPlotItem, *args, **kwargs)
+        return self._add_plotitem(pg.ScatterPlotItem, *args, **kwargs)
 
     def cursor2timetraceamp(self, qpoint):
         """Used for the mouse hover function over seismic display, returns trace, time,
@@ -423,14 +426,14 @@ class Controller:
             self.view.resize(*window_size)
         self.view.grab().save(str(file))
 
-    def sort(self, keys):
+    def sort(self, keys, redraw=True):
         if not (set(keys).issubset(set(self.model.header.keys()))):
-            print("Wrong input")
             return
         elif len(keys) == 0:
             return
         self.trace_indices = np.lexsort([self.model.header[k] for k in keys])
-        self.redraw()
+        if redraw:
+            self.redraw()
 
     def update_data(self, data, h=None, si=.002, gain=None, x0=0, t0=0, taxis=1):
         """
@@ -445,7 +448,8 @@ class Controller:
         if data.ndim >= 3:
             data = np.reshape(data, (-1, data.shape[-1]))
         self.model.set_data(data, si=si, header=h, x0=x0, t0=t0, taxis=taxis)
-        self.trace_indices = np.arange(self.model.ntr)  # this will contain selection and sort
+        self.trace_indices = np.arange(self.model.ntr)
+        self.view.editSort(redraw=False) # this sets the self.trace_indices according to sort order
         clim = [x0 - .5, x0 + self.model.ntr - .5]
         tlim = [t0, t0 + self.model.ns * self.model.si]
         if taxis == 0:  # time is the 0 dimension and the horizontal axis
