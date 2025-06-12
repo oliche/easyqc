@@ -1,3 +1,7 @@
+### 1.1.0 - 2025-06-12
+- dropped conda support
+- possible to give brush and pen arguments to overlaid plots 
+
 ### 1.0.0 - 2024-08-21
 -   released on pypi - uses pyproject.toml
 

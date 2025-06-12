@@ -51,29 +51,17 @@ cd easyqc
 pip install -e .
 ```
 
-### 3) From sources using anaconda
+### 3) From sources using uv
 
-I suggest to install a conda environment and run from sources in development mode.
+I suggest to install a new `uv`environment and run from sources in development mode.
+
 #### Installation
 ```
 git clone https://github.com/oliche/easyqc.git
-conda env create -f conda_easyqc.yaml
-conda activate iblenv
-conda develop ./easyqc
+uv python install 3.13
+uv venv --python 3.13
+uv pip install -e .
 ```
-
-#### Update
-```
-conda env update --file conda_easyqc.yaml --prune
-```
-
-Or for a complete clean-up:
-```
-conda env list
-conda env remove -n easyqc
-```
-And follow the install instructions above.
-
 
 
 ## Contribution
