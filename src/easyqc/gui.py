@@ -168,7 +168,6 @@ class EasyQC(QtWidgets.QMainWindow, Ui_MainWindow):
         # init the seismc wiggle display
         self.plotDataItem_wiggle = pg.PlotDataItem(visible=False)
         self.plotDataItem_wiggle.setPen(pg.mkPen("#ebc000"))
-        self.plotItem_seismic.setBackground("#193600")
         self.plotItem_seismic.addItem(self.plotDataItem_wiggle)
         # get the viewbox
         self.viewBox_seismic = self.plotItem_seismic.getPlotItem().getViewBox()
@@ -442,10 +441,12 @@ class EasyQC(QtWidgets.QMainWindow, Ui_MainWindow):
             self.imageItem_seismic.setVisible(True)
             self.plotDataItem_wiggle.setVisible(False)
             self.plotDataItem_wiggle.clear()
+            self.plotItem_seismic.setBackground("#000000")
         elif mode == DISPLAY_MODE_WIGGLE:
             self.imageItem_seismic.clear()
             self.imageItem_seismic.setVisible(False)
             self.plotDataItem_wiggle.setVisible(True)
+            self.plotItem_seismic.setBackground("#193600")
         self.ctrl.set_model(reset_viewbox=False)
 
 
@@ -709,7 +710,7 @@ class ControllerWiggle(Controller):
             # we plot only one item for all traces, by concatenating the whole array and adding a column of
             wiggle_y = np.r_[self.model.data, np.ones(self.model.ntr)[np.newaxis, :]]
             wiggle_y = (
-                wiggle_y / (20 * np.log10(self.gain))
+                wiggle_y / ( 10 ** ((self.gain - 20) / 20))
                 + np.arange(self.model.ntr)[np.newaxis, :]
             )
             self.view.plotDataItem_wiggle.setData(
@@ -735,8 +736,7 @@ class ControllerWiggle(Controller):
     def set_gain(self, gain=None):
         if gain is None:
             gain = self.gain
-        levels = 10 ** (gain / 20) * 4 * np.array([-1, 1])
-        self.view.imageItem_seismic.setLevels(levels)
+        self._update_plotItem()
         self.view.lineEdit_gain.setText(f"{gain:.1f}")
 
 

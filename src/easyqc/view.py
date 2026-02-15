@@ -161,7 +161,7 @@ class Ui_MainWindow(object):
         self.gridLayout_2.addWidget(self.label_txt_x, 5, 0, 1, 1)
         self.label_version = QtWidgets.QLabel(self.frame_seismic)
         self.label_version.setText(f"EasyQc {easyqc.__version__}")
-        self.gridLayout_2.addWidget(self.label_version, 7, 0, 1, 2)
+        self.gridLayout_2.addWidget(self.label_version, 8, 0, 1, 2)
         self.gridLayout.addWidget(self.frame_seismic, 2, 1, 3, 1)
         self.verticalScrollBar = QtWidgets.QScrollBar(self.centralwidget)
         self.verticalScrollBar.setOrientation(QtCore.Qt.Vertical)
@@ -203,5 +203,4 @@ class Ui_MainWindow(object):
         self.menuView.addAction(self.menuColormaps.menuAction())
         self.menubar.addAction(self.menufile.menuAction())
         self.menubar.addAction(self.menuView.menuAction())
-
         QtCore.QMetaObject.connectSlotsByName(self)
