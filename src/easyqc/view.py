@@ -3,7 +3,6 @@ from pyqtgraph import PlotWidget
 
 
 class Ui_MainWindow(object):
-
     def __init__(self):
         self.setObjectName("MainWindow")
         self.resize(1101, 737)
@@ -21,12 +20,16 @@ class Ui_MainWindow(object):
         self.plotItem_header_h.setMaximumSize(QtCore.QSize(16777215, 90))
         self.plotItem_header_h.setObjectName("plotItem_header_h")
         self.gridLayout.addWidget(self.plotItem_header_h, 1, 3, 1, 1)
-        spacerItem = QtWidgets.QSpacerItem(13, 17, QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Minimum)
+        spacerItem = QtWidgets.QSpacerItem(
+            13, 17, QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Minimum
+        )
         self.gridLayout.addItem(spacerItem, 4, 6, 1, 1)
         self.plotItem_seismic = PlotWidget(self.centralwidget)
         self.plotItem_seismic.setObjectName("plotItem_seismic")
         self.gridLayout.addWidget(self.plotItem_seismic, 3, 3, 1, 1)
-        spacerItem1 = QtWidgets.QSpacerItem(13, 20, QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Minimum)
+        spacerItem1 = QtWidgets.QSpacerItem(
+            13, 20, QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Minimum
+        )
         self.gridLayout.addItem(spacerItem1, 2, 0, 2, 1)
         self.frame_header_h = QtWidgets.QFrame(self.centralwidget)
         self.frame_header_h.setFrameShape(QtWidgets.QFrame.StyledPanel)
@@ -39,7 +42,9 @@ class Ui_MainWindow(object):
         self.comboBox_header.setObjectName("comboBox_header")
         self.gridLayout_3.addWidget(self.comboBox_header, 0, 0, 1, 1)
         self.gridLayout.addWidget(self.frame_header_h, 1, 1, 1, 1)
-        spacerItem2 = QtWidgets.QSpacerItem(20, 13, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+        spacerItem2 = QtWidgets.QSpacerItem(
+            20, 13, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed
+        )
         self.gridLayout.addItem(spacerItem2, 0, 3, 1, 1)
         self.horizontalScrollBar = QtWidgets.QScrollBar(self.centralwidget)
         self.horizontalScrollBar.setOrientation(QtCore.Qt.Horizontal)
@@ -89,10 +94,14 @@ class Ui_MainWindow(object):
         self.label_gain.setObjectName("label_gain")
         self.gridLayout_2.addWidget(self.label_gain, 0, 0, 1, 1)
         self.lineEdit_gain = QtWidgets.QLineEdit(self.frame_seismic)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.lineEdit_gain.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.lineEdit_gain.sizePolicy().hasHeightForWidth()
+        )
         self.lineEdit_gain.setSizePolicy(sizePolicy)
         self.lineEdit_gain.setMinimumSize(QtCore.QSize(65, 0))
         self.lineEdit_gain.setMaximumSize(QtCore.QSize(50, 16777215))
@@ -112,7 +121,9 @@ class Ui_MainWindow(object):
         self.label_sort.setMaximumSize(QtCore.QSize(30, 16777215))
         self.label_sort.setObjectName("label_sort")
         self.gridLayout_2.addWidget(self.label_sort, 2, 0, 1, 1)
-        spacerItem3 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        spacerItem3 = QtWidgets.QSpacerItem(
+            20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
+        )
         self.gridLayout_2.addItem(spacerItem3, 3, 1, 1, 1)
         self.label_txt_x = QtWidgets.QLabel(self.frame_seismic)
         self.label_txt_x.setMaximumSize(QtCore.QSize(10, 20))

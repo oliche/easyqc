@@ -69,7 +69,9 @@ uv pip install -e .
 
 Pypi Release checklist
 - Update version in `pyproject.toml`
-- Flake `ruff check .`
+- Linting:
+  - `ruff check .`
+  - `ruff format .` 
 - publish on pypi:
 ```shell
 rm -fR dist
@@ -80,12 +82,4 @@ pdm publish
 ```shell
 git tag -a 1.0.0
 git push origin 1.0.0
-```
-
-Test wheel:
-```shell
-virtualenv easyqc --python=3.11
-source ./easyqc/bin/activate
-pip install easyqc
-#pip install -i https://test.pypi.org/simple/ easyqc  # doesnt' seem to install deps
 ```

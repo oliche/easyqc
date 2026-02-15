@@ -11,8 +11,8 @@ from easyqc.pgtools import ImShowSpectrogram
 from easyqc.view import Ui_MainWindow
 
 PARAMS_TRACE_PLOTS = {
-    'neighbors': 2,
-    'color': pg.mkColor((31, 119, 180)),
+    "neighbors": 2,
+    "color": pg.mkColor((31, 119, 180)),
 }
 
 
@@ -20,6 +20,7 @@ class EasyQC(QtWidgets.QMainWindow, Ui_MainWindow):
     """
     This is the view in the MVC approach
     """
+
     layers = None  # used for additional scatter layers
     QT_APP = None
 
@@ -32,8 +33,13 @@ class EasyQC(QtWidgets.QMainWindow, Ui_MainWindow):
 
     @staticmethod
     def _get_or_create(title=None):
-        eqc = next(filter(lambda e: e.isVisible() and e.windowTitle() == title,
-                          EasyQC._instances()), None)
+        eqc = next(
+            filter(
+                lambda e: e.isVisible() and e.windowTitle() == title,
+                EasyQC._instances(),
+            ),
+            None,
+        )
         if eqc is None:
             eqc = EasyQC()
             eqc.setWindowTitle(title)
@@ -44,7 +50,9 @@ class EasyQC(QtWidgets.QMainWindow, Ui_MainWindow):
         # wave by Diana Militano from the Noun Project
         self.layers = {}
         self.ctrl = Controller(self)
-        self.setWindowIcon(QtGui.QIcon(str(Path(__file__).parent.joinpath('easyqc.svg'))))
+        self.setWindowIcon(
+            QtGui.QIcon(str(Path(__file__).parent.joinpath("easyqc.svg")))
+        )
         background_color = self.palette().color(self.backgroundRole())
         # init the seismic density display
         self.plotItem_seismic.setAspectLocked(False)
@@ -64,18 +72,24 @@ class EasyQC(QtWidgets.QMainWindow, Ui_MainWindow):
         self.plotItem_header_v.setBackground(background_color)
         self.plotItem_seismic.setYLink(self.plotItem_header_v)
         # set the ticks so that they don't auto scale and ruin the axes link
-        ax = self.plotItem_seismic.getAxis('left')
-        ax.setStyle(tickTextWidth=60, autoReduceTextSpace=False, autoExpandTextSpace=False)
-        ax = self.plotItem_header_h.getAxis('left')
-        ax.setStyle(tickTextWidth=60, autoReduceTextSpace=False, autoExpandTextSpace=False)
-        ax = self.plotItem_header_v.getAxis('left')
+        ax = self.plotItem_seismic.getAxis("left")
+        ax.setStyle(
+            tickTextWidth=60, autoReduceTextSpace=False, autoExpandTextSpace=False
+        )
+        ax = self.plotItem_header_h.getAxis("left")
+        ax.setStyle(
+            tickTextWidth=60, autoReduceTextSpace=False, autoExpandTextSpace=False
+        )
+        ax = self.plotItem_header_v.getAxis("left")
         ax.setStyle(showValues=False)
         # prepare placeholders for hover windows
-        self.hoverPlotWidgets = {'Trace': None, 'Spectrum': None, 'Spectrogram': None}
+        self.hoverPlotWidgets = {"Trace": None, "Spectrum": None, "Spectrogram": None}
         # connect signals and slots
         s = self.viewBox_seismic.scene()
         # vb.scene().sigMouseMoved.connect(self.mouseMoveEvent)
-        self.proxy = pg.SignalProxy(s.sigMouseMoved, rateLimit=60, slot=self.mouseMoveEvent)
+        self.proxy = pg.SignalProxy(
+            s.sigMouseMoved, rateLimit=60, slot=self.mouseMoveEvent
+        )
         s.sigMouseClicked.connect(self.mouseClick)
         self.lineEdit_gain.returnPressed.connect(self.editGain)
         self.lineEdit_sort.returnPressed.connect(self.editSort)
@@ -86,19 +100,23 @@ class EasyQC(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def _init_menu(self):
         # pre-defined colormaps
-        self.actionColormap_CET_D6.triggered.connect(lambda: self.setColorMap('CET-D6'))
-        self.actionColormap_CET_D1.triggered.connect(lambda: self.setColorMap('CET-D1'))
-        self.actionColormap_CET_L2.triggered.connect(lambda: self.setColorMap('CET-L2'))
-        self.actionColormap_MPL_PuOr.triggered.connect(lambda: self.setColorMap('PuOr'))
+        self.actionColormap_CET_D6.triggered.connect(lambda: self.setColorMap("CET-D6"))
+        self.actionColormap_CET_D1.triggered.connect(lambda: self.setColorMap("CET-D1"))
+        self.actionColormap_CET_L2.triggered.connect(lambda: self.setColorMap("CET-L2"))
+        self.actionColormap_MPL_PuOr.triggered.connect(lambda: self.setColorMap("PuOr"))
 
     def _init_cmenu(self):
         """
         Setup context menus - on instantiation only
         """
-        self.viewBox_seismic.scene().contextMenu = None  # this gets rid of the export context menu
-        self.plotItem_seismic.plotItem.ctrlMenu = None  # this gets rid of the plot context menu
+        self.viewBox_seismic.scene().contextMenu = (
+            None  # this gets rid of the export context menu
+        )
+        self.plotItem_seismic.plotItem.ctrlMenu = (
+            None  # this gets rid of the plot context menu
+        )
         for act in self.viewBox_seismic.menu.actions():
-            if act.text() == 'View All':
+            if act.text() == "View All":
                 continue
             self.viewBox_seismic.menu.removeAction(act)
         # and add ours
@@ -116,6 +134,7 @@ class EasyQC(QtWidgets.QMainWindow, Ui_MainWindow):
     """
     View Methods
     """
+
     def keyPressEvent(self, e):
         """
         page-up / ctrl + a :  gain up
@@ -127,11 +146,13 @@ class EasyQC(QtWidgets.QMainWindow, Ui_MainWindow):
         k, m = (e.key(), e.modifiers())
         # page up / ctrl + a
         if k == QtCore.Qt.Key_PageUp or (
-                m == QtCore.Qt.ControlModifier and k == QtCore.Qt.Key_A):
+            m == QtCore.Qt.ControlModifier and k == QtCore.Qt.Key_A
+        ):
             self.ctrl.set_gain(self.ctrl.gain - 3)
         # page down / ctrl + z
         elif k == QtCore.Qt.Key_PageDown or (
-                m == QtCore.Qt.ControlModifier and k == QtCore.Qt.Key_Z):
+            m == QtCore.Qt.ControlModifier and k == QtCore.Qt.Key_Z
+        ):
             self.ctrl.set_gain(self.ctrl.gain + 3)
         # control + P: propagate
         elif m == QtCore.Qt.ShiftModifier and k == QtCore.Qt.Key_P:
@@ -139,7 +160,12 @@ class EasyQC(QtWidgets.QMainWindow, Ui_MainWindow):
         elif m == QtCore.Qt.ControlModifier and k == QtCore.Qt.Key_P:
             self.ctrl.propagate()
         # arrows keys move seismic
-        elif k in (QtCore.Qt.Key_Up, QtCore.Qt.Key_Left, QtCore.Qt.Key_Right, QtCore.Qt.Key_Down):
+        elif k in (
+            QtCore.Qt.Key_Up,
+            QtCore.Qt.Key_Left,
+            QtCore.Qt.Key_Right,
+            QtCore.Qt.Key_Down,
+        ):
             self.translate_seismic(k, m == QtCore.Qt.ControlModifier)
         # ctrl + s: screenshot to clipboard
         elif m == QtCore.Qt.ControlModifier and k == QtCore.Qt.Key_S:
@@ -150,7 +176,7 @@ class EasyQC(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ctrl.set_gain()
 
     def editSort(self, redraw=True):
-        keys = self.lineEdit_sort.text().split(' ')
+        keys = self.lineEdit_sort.text().split(" ")
         self.ctrl.sort(keys, redraw=redraw)
 
     def mouseClick(self, event):
@@ -162,7 +188,6 @@ class EasyQC(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def mouseMoveEvent(self, scenepos):
         if isinstance(scenepos, tuple):
-
             scenepos = scenepos[0]
         else:
             return
@@ -176,7 +201,10 @@ class EasyQC(QtWidgets.QMainWindow, Ui_MainWindow):
         htxt = h if isinstance(h, str) else f"{h:.4f}"
         self.label_h.setText(htxt)
         for key in self.hoverPlotWidgets:
-            if self.hoverPlotWidgets[key] is not None and self.hoverPlotWidgets[key].isVisible():
+            if (
+                self.hoverPlotWidgets[key] is not None
+                and self.hoverPlotWidgets[key].isVisible()
+            ):
                 self.ctrl.update_hover(qpoint, key)
 
     def translate_seismic(self, k, cm):
@@ -209,12 +237,11 @@ class EasyQC(QtWidgets.QMainWindow, Ui_MainWindow):
             self.viewBox_seismic.setYRange(yr[0], yr[1], padding=0)
 
     def on_sigRangeChanged(self, r):
-
         def set_scroll(sb, r, b):
             # sb: scroll bar object, r: current range, b: axes limits (bounds)
             # cf. https://doc.qt.io/qt-5/qscrollbar.html
-            range = (r[1] - r[0])
-            doclength = (b[1] - b[0])
+            range = r[1] - r[0]
+            doclength = b[1] - b[0]
             maximum = int((doclength - range) / doclength * 65536)
             sb.setMaximum(maximum)
             sb.setPageStep(65536 - maximum)
@@ -240,26 +267,40 @@ class EasyQC(QtWidgets.QMainWindow, Ui_MainWindow):
     def _cmenu_hover(self, key, image=False):
         """Creates the plot widget for a given key: could be 'Trace', 'Spectrum', or 'Spectrogram'"""
         if self.hoverPlotWidgets[key] is None:
-            if image and key == 'Spectrogram':
+            if image and key == "Spectrogram":
                 self.hoverPlotWidgets[key] = ImShowSpectrogram()
             else:
-                self.hoverPlotWidgets[key] = pg.plot([0], [0], pen=pg.mkPen(color=[180, 180, 180]), connect="finite")
+                self.hoverPlotWidgets[key] = pg.plot(
+                    [0], [0], pen=pg.mkPen(color=[180, 180, 180]), connect="finite"
+                )
                 self.hoverPlotWidgets[key].addItem(
                     pg.PlotCurveItem(
-                        [0], [0], pen=pg.mkPen(color=PARAMS_TRACE_PLOTS['color'], width=1), connect="finite"))
+                        [0],
+                        [0],
+                        pen=pg.mkPen(color=PARAMS_TRACE_PLOTS["color"], width=1),
+                        connect="finite",
+                    )
+                )
                 self.hoverPlotWidgets[key].addItem(
-                    pg.PlotDataItem([0], [0], symbolPen=pg.mkPen(color=[255, 0, 0]), symbolSize=7, symbol='star'))
-                self.hoverPlotWidgets[key].setBackground(pg.mkColor('#ffffff'))
+                    pg.PlotDataItem(
+                        [0],
+                        [0],
+                        symbolPen=pg.mkPen(color=[255, 0, 0]),
+                        symbolSize=7,
+                        symbol="star",
+                    )
+                )
+                self.hoverPlotWidgets[key].setBackground(pg.mkColor("#ffffff"))
         self.hoverPlotWidgets[key].setVisible(True)
 
     def cmenu_ViewTrace(self):
-        self._cmenu_hover('Trace')
+        self._cmenu_hover("Trace")
 
     def cmenu_ViewSpectrum(self):
-        self._cmenu_hover('Spectrum')
+        self._cmenu_hover("Spectrum")
 
     def cmenu_ViewSpectrogram(self):
-        self._cmenu_hover('Spectrogram', image=True)
+        self._cmenu_hover("Spectrogram", image=True)
 
     def setColorMap(self, cmap):
         """
@@ -273,7 +314,6 @@ class EasyQC(QtWidgets.QMainWindow, Ui_MainWindow):
 
 
 class Controller:
-
     def __init__(self, view):
         self.view = view
         self.model = Model(None, None)
@@ -290,18 +330,28 @@ class Controller:
     def remove_layer_from_label(self, label):
         current_layer = self.view.layers.get(label)
         if current_layer is not None:
-            current_layer['layer'].clear()
-            self.view.plotItem_seismic.removeItem(current_layer['layer'])
+            current_layer["layer"].clear()
+            self.view.plotItem_seismic.removeItem(current_layer["layer"])
             self.view.layers.pop(label)
 
-    def _add_plotitem(self, plot_item_class, x, y, rgb=None, label='default', brush=None, pen=None, **kwargs):
+    def _add_plotitem(
+        self,
+        plot_item_class,
+        x,
+        y,
+        rgb=None,
+        label="default",
+        brush=None,
+        pen=None,
+        **kwargs,
+    ):
         """
         Generic way to add a plot item to the main seismic view
         """
         rgb = (0, 255, 0) if rgb is None else rgb
         self.remove_layer_from_label(label)
         new_scatter = plot_item_class()
-        self.view.layers[label] = {'layer': new_scatter, 'type': 'scatter'}
+        self.view.layers[label] = {"layer": new_scatter, "type": "scatter"}
         self.view.plotItem_seismic.addItem(new_scatter)
         brush = pg.mkBrush(rgb) if brush is None else brush
         pen = pg.mkPen(rgb) if pen is None else pen
@@ -322,7 +372,7 @@ class Controller:
 
     def cursor2timetraceamp(self, qpoint):
         """Used for the mouse hover function over seismic display, returns trace, time,
-          amplitude,and header"""
+        amplitude,and header"""
         ixy = self.cursor2ind(qpoint)
         a = self.model.data[ixy[0], ixy[1]]
         xy_ = np.matmul(self.transform, np.array([qpoint.x(), qpoint.y(), 1]))
@@ -332,9 +382,17 @@ class Controller:
         return c, t, a, h
 
     def cursor2ind(self, qpoint):
-        """ image coordinates over the seismic display"""
-        ix = int(np.maximum(0, np.minimum(qpoint.x() - self.transform[1, 2], self.model.nx - 1)))
-        iy = int(np.maximum(0, np.minimum(qpoint.y() - self.transform[1, 1], self.model.ny - 1)))
+        """image coordinates over the seismic display"""
+        ix = int(
+            np.maximum(
+                0, np.minimum(qpoint.x() - self.transform[1, 2], self.model.nx - 1)
+            )
+        )
+        iy = int(
+            np.maximum(
+                0, np.minimum(qpoint.y() - self.transform[1, 1], self.model.ny - 1)
+            )
+        )
         return ix, iy
 
     def limits(self):
@@ -356,7 +414,7 @@ class Controller:
             if eqc is self.view:
                 continue
             else:
-                eqc.setColorMap(self.view.imageItem_seismic.getColorMap() or 'CET-L2')
+                eqc.setColorMap(self.view.imageItem_seismic.getColorMap() or "CET-L2")
                 eqc.setGeometry(self.view.geometry())
                 eqc.ctrl.set_gain(self.gain)
                 eqc.plotItem_seismic.setXLink(self.view.plotItem_seismic)
@@ -374,7 +432,7 @@ class Controller:
                 eqc.setGeometry(rect)
 
     def redraw(self):
-        """ redraw seismic and headers with order and selection"""
+        """redraw seismic and headers with order and selection"""
         # np.take could look neater but it's actually much slower than straight indexing
         if self.model.taxis == 1:
             self.view.imageItem_seismic.setImage(self.model.data[self.trace_indices, :])
@@ -393,7 +451,7 @@ class Controller:
     @property
     def gain(self):
         str_gain = self.view.lineEdit_gain.text()
-        if str_gain.strip() == '':
+        if str_gain.strip() == "":
             return self.model.auto_gain()
         else:
             return float(str_gain)
@@ -442,7 +500,7 @@ class Controller:
         if redraw:
             self.redraw()
 
-    def update_data(self, data, h=None, si=.002, gain=None, x0=0, t0=0, taxis=1):
+    def update_data(self, data, h=None, si=0.002, gain=None, x0=0, t0=0, taxis=1):
         """
         data is a 2d array [ntr, nsamples]
         if 3d the first dimensions are merged in ntr and the last is nsamples
@@ -456,25 +514,29 @@ class Controller:
             data = np.reshape(data, (-1, data.shape[-1]))
         self.model.set_data(data, si=si, header=h, x0=x0, t0=t0, taxis=taxis)
         self.trace_indices = np.arange(self.model.ntr)
-        self.view.editSort(redraw=False) # this sets the self.trace_indices according to sort order
-        clim = [x0 - .5, x0 + self.model.ntr - .5]
+        self.view.editSort(
+            redraw=False
+        )  # this sets the self.trace_indices according to sort order
+        clim = [x0 - 0.5, x0 + self.model.ntr - 0.5]
         tlim = [t0, t0 + self.model.ns * self.model.si]
         if taxis == 0:  # time is the 0 dimension and the horizontal axis
             xlim, ylim = (tlim, clim)
-            transform = [si, 0., 0., 0., 1, 0., t0 - si / 2, x0 - .5, 1.]
+            transform = [si, 0.0, 0.0, 0.0, 1, 0.0, t0 - si / 2, x0 - 0.5, 1.0]
             self.view.imageItem_seismic.setImage(data[:, self.trace_indices])
         elif taxis == 1:  # time is the 1 dimension and vertical axis
             xlim, ylim = (clim, tlim)
-            transform = [1., 0., 0., 0., si, 0., x0 - .5, t0 - si / 2, 1.]
+            transform = [1.0, 0.0, 0.0, 0.0, si, 0.0, x0 - 0.5, t0 - si / 2, 1.0]
             self.view.imageItem_seismic.setImage(data[self.trace_indices, :])
             self.view.plotItem_seismic.invertY()
         else:
-            ValueError('taxis must be 0 (horizontal axis) or 1 (vertical axis)')
+            ValueError("taxis must be 0 (horizontal axis) or 1 (vertical axis)")
         self.transform = np.array(transform).reshape((3, 3)).T
         self.view.imageItem_seismic.setTransform(QtGui.QTransform(*transform))
         self.view.plotItem_header_h.setLimits(xMin=xlim[0], xMax=xlim[1])
         self.view.plotItem_header_v.setLimits(yMin=ylim[0], yMax=ylim[1])
-        self.view.plotItem_seismic.setLimits(xMin=xlim[0], xMax=xlim[1], yMin=ylim[0], yMax=ylim[1])
+        self.view.plotItem_seismic.setLimits(
+            xMin=xlim[0], xMax=xlim[1], yMin=ylim[0], yMax=ylim[1]
+        )
         # reset the view
         if update_axis:
             xlim, ylim = self.limits()
@@ -490,9 +552,9 @@ class Controller:
 
     def update_hover(self, qpoint, key):
         c, t, a, _ = self.cursor2timetraceamp(qpoint)
-        if key == 'Trace':
+        if key == "Trace":
             plotitem = self.view.hoverPlotWidgets[key].getPlotItem()
-            traces = self.model.get_trace(c, neighbors=PARAMS_TRACE_PLOTS['neighbors'])
+            traces = self.model.get_trace(c, neighbors=PARAMS_TRACE_PLOTS["neighbors"])
             nc = traces.shape[1]
             xdata = np.tile(np.r_[self.model.tscale, np.nan], nc).T
             ydata = np.r_[traces, np.ones((1, nc)) * np.nan].T
@@ -501,11 +563,15 @@ class Controller:
             plotitem.items[1].setData(self.model.tscale, trace)
             plotitem.items[2].setData([t], [a])
             plotitem.setXRange(*self.trange)
-        elif key == 'Spectrum':
+        elif key == "Spectrum":
             plotitem = self.view.hoverPlotWidgets[key].getPlotItem()
-            plotitem.items[0].setData(*self.model.get_trace_spectrum(c, trange=self.trange))
-        elif key == 'Spectrogram':
-            self.view.hoverPlotWidgets[key].set_data(self.model.get_trace(c), fs=1 / self.model.si)
+            plotitem.items[0].setData(
+                *self.model.get_trace_spectrum(c, trange=self.trange)
+            )
+        elif key == "Spectrogram":
+            self.view.hoverPlotWidgets[key].set_data(
+                self.model.get_trace(c), fs=1 / self.model.si
+            )
 
     @property
     def trange(self):
@@ -527,21 +593,26 @@ class Controller:
 @dataclass
 class Model:
     """Class for keeping track of the visualized data"""
+
     data: np.array
     header: np.array
-    si: float = 1.
+    si: float = 1.0
     nx: int = 1
     ny: int = 1
 
     def auto_gain(self) -> float:
-        rmsnan = np.nansum(self.data ** 2, axis=self.taxis) / np.sum(
-            ~np.isnan(self.data), axis=self.taxis)
+        rmsnan = np.nansum(self.data**2, axis=self.taxis) / np.sum(
+            ~np.isnan(self.data), axis=self.taxis
+        )
         return 20 * np.log10(np.median(np.sqrt(rmsnan)))
 
     def get_trace_spectrogram(self, c, trange=None):
         from scipy.signal import spectrogram
+
         tr = self.get_trace(c, trange=trange)
-        fscale, tscale, tf = spectrogram(tr, fs=1 / self.si, nperseg=50, nfft=512, window='cosine', noverlap=48)
+        fscale, tscale, tf = spectrogram(
+            tr, fs=1 / self.si, nperseg=50, nfft=512, window="cosine", noverlap=48
+        )
         tscale += trange[0]
         tf = 20 * np.log10(tf + np.finfo(float).eps)
         return fscale, tscale, tf
@@ -594,7 +665,7 @@ class Model:
                 self.si = header
             else:
                 self.si = header.si[0]
-        self.header = {'trace': np.arange(self.ntr)}
+        self.header = {"trace": np.arange(self.ntr)}
         if header is not None:
             self.header.update(header)
 
@@ -603,7 +674,7 @@ class Model:
         return np.arange(self.ns) * self.si + self.t0
 
 
-def viewseis(w=None, si=.002, h=None, title=None, t0=0, x0=0, taxis=1):
+def viewseis(w=None, si=0.002, h=None, title=None, t0=0, x0=0, taxis=1):
     """
     viewseis(w, h, 'processed')
     :param w: 2D array (ntraces, nsamples)
@@ -621,7 +692,7 @@ def viewseis(w=None, si=.002, h=None, title=None, t0=0, x0=0, taxis=1):
     return eqc
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     eqc = viewseis(None)
     app = pg.Qt.mkQApp()
     sys.exit(app.exec_())

@@ -3,11 +3,11 @@ from functools import wraps
 
 from qtpy import QtWidgets
 
-_logger = logging.getLogger('ibllib')
+_logger = logging.getLogger("ibllib")
 
 
 def get_main_window():
-    """ Get the Main window of a QT application"""
+    """Get the Main window of a QT application"""
     app = QtWidgets.QApplication.instance()
     return [w for w in app.topLevelWidgets() if isinstance(w, QtWidgets.QMainWindow)][0]
 
@@ -27,12 +27,14 @@ def require_qt(func):
     Qt application before it can run. An error is raised if that is not
     the case.
     """
+
     @wraps(func)
     def wrapped(*args, **kwargs):
         if not QtWidgets.QApplication.instance():  # pragma: no cover
             _logger.warning("Creating a Qt application.")
             create_app()
         return func(*args, **kwargs)
+
     return wrapped
 
 

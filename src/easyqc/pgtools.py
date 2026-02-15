@@ -10,11 +10,10 @@ import scipy.signal
 
 
 class ImShowSpectrogram(QtWidgets.QMainWindow):
-
     def __init__(self, *args, **kwargs):
         super(ImShowSpectrogram, self).__init__(*args, **kwargs)
-        uic.loadUi(Path(__file__).parent.joinpath('spectrogram.ui'), self)
-        self.settings = QtCore.QSettings('spectrogram')
+        uic.loadUi(Path(__file__).parent.joinpath("spectrogram.ui"), self)
+        self.settings = QtCore.QSettings("spectrogram")
         self.imageItem = pg.ImageItem()
         self.plotItem_image.addItem(self.imageItem)
         self._settings2ui()
@@ -47,7 +46,7 @@ class ImShowSpectrogram(QtWidgets.QMainWindow):
         self.settings.setValue("nperseg", int(self.uiLineEdit_nperseg.text()))
         self.settings.setValue("noverlap", int(self.uiLineEdit_noverlap.text()))
 
-    def set_data(self, data, fs, colormap='magma'):
+    def set_data(self, data, fs, colormap="magma"):
         self.data = data
         self.fs = fs
         self.colormap = colormap
@@ -55,7 +54,9 @@ class ImShowSpectrogram(QtWidgets.QMainWindow):
 
     def set_colormap(self, colormap):
         if colormap not in Gradients.keys():
-            ValueError(f"{colormap} is not a valid colormap, options are {Gradients.keys()}")
+            ValueError(
+                f"{colormap} is not a valid colormap, options are {Gradients.keys()}"
+            )
         pgColormap = pg.ColorMap(*zip(*Gradients["magma"]["ticks"]))
         self.imageItem.setLookupTable(pgColormap.getLookupTable())
         if self.vmax is None:
@@ -65,11 +66,29 @@ class ImShowSpectrogram(QtWidgets.QMainWindow):
     def _update(self):
         self._ui2settings()
         fscale, tscale, tf = scipy.signal.spectrogram(
-            self.data, fs=self.fs, nperseg=self.nperseg, nfft=self.nfft, window='cosine', noverlap=self.noverlap)
-        transform = [tscale[1] - tscale[0], 0., 0., 0., fscale[1] - fscale[0], 0., tscale[0], fscale[0], 1.]
+            self.data,
+            fs=self.fs,
+            nperseg=self.nperseg,
+            nfft=self.nfft,
+            window="cosine",
+            noverlap=self.noverlap,
+        )
+        transform = [
+            tscale[1] - tscale[0],
+            0.0,
+            0.0,
+            0.0,
+            fscale[1] - fscale[0],
+            0.0,
+            tscale[0],
+            fscale[0],
+            1.0,
+        ]
         self.imageItem.setImage(20 * np.log10(tf.T))
         self.imageItem.setTransform(QtGui.QTransform(*transform))
-        self.plotItem_image.setLimits(xMin=tscale[0], xMax=tscale[-1], yMin=fscale[0], yMax=fscale[-1])
+        self.plotItem_image.setLimits(
+            xMin=tscale[0], xMax=tscale[-1], yMin=fscale[0], yMax=fscale[-1]
+        )
         self.set_colormap(self.colormap)
 
     def keyPressEvent(self, e):
@@ -80,11 +99,15 @@ class ImShowSpectrogram(QtWidgets.QMainWindow):
         """
         k, m = (e.key(), e.modifiers())
         # page up / ctrl + a
-        if k == QtCore.Qt.Key_PageUp or (m == QtCore.Qt.ControlModifier and k == QtCore.Qt.Key_A):
+        if k == QtCore.Qt.Key_PageUp or (
+            m == QtCore.Qt.ControlModifier and k == QtCore.Qt.Key_A
+        ):
             self.vmax = self.vmax - 3
             self.imageItem.setLevels((self.vmin, self.vmax))
         # page down / ctrl + z
-        elif k == QtCore.Qt.Key_PageDown or (m == QtCore.Qt.ControlModifier and k == QtCore.Qt.Key_Z):
+        elif k == QtCore.Qt.Key_PageDown or (
+            m == QtCore.Qt.ControlModifier and k == QtCore.Qt.Key_Z
+        ):
             self.vmax = self.vmax + 3
             self.imageItem.setLevels((self.vmin, self.vmax))
         print(self.vmax)
@@ -99,11 +122,12 @@ class ImShowItem(object):
         :param colormap:
         :return:
     """
+
     def __init__(self, *args, **kwargs):
         self.plotwidget = pg.PlotWidget()
         self.plotitem = self.plotwidget.getPlotItem()
         self.imageitem = pg.ImageItem(np.zeros((2, 2)))
-        self.plotwidget.setBackground(pg.mkColor('#ffffff'))
+        self.plotwidget.setBackground(pg.mkColor("#ffffff"))
         self.plotwidget.addItem(self.imageitem)
         self.imageitem.getViewBox().setAspectLocked(False)
         self.plotwidget.show()
@@ -116,8 +140,13 @@ class ImShowItem(object):
         """
         self.set_image(*args, **kwargs)
 
-    def set_image(self, image: np.array = None, hscale: np.array = None, vscale: np.array = None,
-                  colormap: str = 'magma'):
+    def set_image(
+        self,
+        image: np.array = None,
+        hscale: np.array = None,
+        vscale: np.array = None,
+        colormap: str = "magma",
+    ):
         """
         :param image:
         :param hscale:
@@ -131,22 +160,41 @@ class ImShowItem(object):
             hscale = [0, 1]
         if vscale is None:
             vscale = [0, 1]
-        transform = [hscale[1] - hscale[0], 0., 0., 0., vscale[1] - vscale[0], 0., hscale[0], vscale[0], 1.]
+        transform = [
+            hscale[1] - hscale[0],
+            0.0,
+            0.0,
+            0.0,
+            vscale[1] - vscale[0],
+            0.0,
+            hscale[0],
+            vscale[0],
+            1.0,
+        ]
         self.imageitem.setImage(image.T)
         # plotitem.invertY()
         self.imageitem.setTransform(QtGui.QTransform(*transform))
-        self.plotitem.setLimits(xMin=hscale[0], xMax=hscale[-1], yMin=vscale[0], yMax=vscale[-1])
+        self.plotitem.setLimits(
+            xMin=hscale[0], xMax=hscale[-1], yMin=vscale[0], yMax=vscale[-1]
+        )
         self.set_colormap(colormap)
 
     def set_colormap(self, colormap):
         if colormap not in Gradients.keys():
-            ValueError(f"{colormap} is not a valid colormap, options are {Gradients.keys()}")
+            ValueError(
+                f"{colormap} is not a valid colormap, options are {Gradients.keys()}"
+            )
         pgColormap = pg.ColorMap(*zip(*Gradients["magma"]["ticks"]))
         self.imageitem.setLookupTable(pgColormap.getLookupTable())
 
 
-def imshow(image: np.array, hscale: np.array = None, vscale: np.array = None,
-           colormap: str = 'viridis', imshowitem: ImShowItem = None) -> ImShowItem:
+def imshow(
+    image: np.array,
+    hscale: np.array = None,
+    vscale: np.array = None,
+    colormap: str = "viridis",
+    imshowitem: ImShowItem = None,
+) -> ImShowItem:
     """
     :param image: axis 0 is the vertical direction, axis 1 is the horizontal direction
     :param hscale:
