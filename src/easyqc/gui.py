@@ -16,6 +16,9 @@ PARAMS_TRACE_PLOTS = {
     "color": pg.mkColor((31, 119, 180)),
 }
 
+DISPLAY_MODE_DENSITY = "density"
+DISPLAY_MODE_WIGGLE = "wiggle"
+
 
 @dataclass
 class Model:
@@ -74,6 +77,8 @@ class Model:
 
     def set_data(self, data, header=None, si=None, t0=0, x0=0, taxis=1):
         assert (header is not None) or si
+        if data.ndim >= 3:
+            data = np.reshape(data, (-1, data.shape[-1]))
         # intrinsic data
         self.x0 = x0
         self.t0 = t0
@@ -136,14 +141,20 @@ class EasyQC(QtWidgets.QMainWindow, Ui_MainWindow):
 
     @property
     def ctrl(self):
-        return self._ctrl_image
+        return (
+            self._ctrl_wiggle
+            if self._display_mode == DISPLAY_MODE_WIGGLE
+            else self._ctrl_image
+        )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # wave by Diana Militano from the Noun Project
         self.layers = {}
         self.model = Model(None, None)
+        self._display_mode = DISPLAY_MODE_DENSITY
         self._ctrl_image = ControllerImage(self)
+        self._ctrl_wiggle = ControllerWiggle(self)
         # self._ctrl_wiggle = ControllerWiggle(self)
         self.setWindowIcon(
             QtGui.QIcon(str(Path(__file__).parent.joinpath("easyqc.svg")))
@@ -154,6 +165,12 @@ class EasyQC(QtWidgets.QMainWindow, Ui_MainWindow):
         self.imageItem_seismic = pg.ImageItem()
         self.plotItem_seismic.setBackground(background_color)
         self.plotItem_seismic.addItem(self.imageItem_seismic)
+        # init the seismc wiggle display
+        self.plotDataItem_wiggle = pg.PlotDataItem(visible=False)
+        self.plotDataItem_wiggle.setPen(pg.mkPen("#ebc000"))
+        self.plotItem_seismic.setBackground("#193600")
+        self.plotItem_seismic.addItem(self.plotDataItem_wiggle)
+        # get the viewbox
         self.viewBox_seismic = self.plotItem_seismic.getPlotItem().getViewBox()
         self._init_menu()
         self._init_cmenu()
@@ -192,6 +209,12 @@ class EasyQC(QtWidgets.QMainWindow, Ui_MainWindow):
         self.viewBox_seismic.sigRangeChanged.connect(self.on_sigRangeChanged)
         self.horizontalScrollBar.sliderMoved.connect(self.on_horizontalSliderChange)
         self.verticalScrollBar.sliderMoved.connect(self.on_verticalSliderChange)
+        self.radio_density.toggled.connect(
+            lambda checked: checked and self.set_display_mode(DISPLAY_MODE_DENSITY)
+        )
+        self.radio_wiggle.toggled.connect(
+            lambda checked: checked and self.set_display_mode(DISPLAY_MODE_WIGGLE)
+        )
 
     def _init_menu(self):
         # pre-defined colormaps
@@ -407,6 +430,24 @@ class EasyQC(QtWidgets.QMainWindow, Ui_MainWindow):
             cmap = pg.colormap.getFromMatplotlib(cmap)
         self.imageItem_seismic.setColorMap(cmap)
 
+    def set_display_mode(self, mode: str) -> None:
+        """
+        Callback for the Density/Wiggle radio buttons.
+        """
+        # we only reset the models if the data changes
+        if mode == self._display_mode:
+            return
+        self._display_mode = mode
+        if mode == DISPLAY_MODE_DENSITY:
+            self.imageItem_seismic.setVisible(True)
+            self.plotDataItem_wiggle.setVisible(False)
+            self.plotDataItem_wiggle.clear()
+        elif mode == DISPLAY_MODE_WIGGLE:
+            self.imageItem_seismic.clear()
+            self.imageItem_seismic.setVisible(False)
+            self.plotDataItem_wiggle.setVisible(True)
+        self.ctrl.set_model(reset_viewbox=False)
+
 
 class Controller(abc.ABC):
     def __init__(self, view):
@@ -428,7 +469,7 @@ class Controller(abc.ABC):
     def model(self) -> Model:
         return self.view.model
 
-    def set_model(self, data, h=None, si=0.002, gain=None, x0=0, t0=0, taxis=1):
+    def set_model(self, reset_viewbox=True):
         """
         Main entry point for creating or updating new data array to the GUI
         data is a 2d array [ntr, nsamples]
@@ -436,24 +477,22 @@ class Controller(abc.ABC):
         update_data(self, data=None, h=0.002, gain=None)
         """
         # reshape a 3d+ array in 2d to plot as an image
+        t0, x0 = self.model.t0, self.model.x0
         self.remove_all_layers()
-        if data.ndim >= 3:
-            data = np.reshape(data, (-1, data.shape[-1]))
-        self.model.set_data(data, si=si, header=h, x0=x0, t0=t0, taxis=taxis)
         self.trace_indices = np.arange(self.model.ntr)
         self.view.editSort(
             redraw=False
         )  # this sets the self.trace_indices according to sort order
         self._update_plotItem(
-            tlim=[t0, t0 + self.model.ns * self.model.si],
-            clim=[x0 - 0.5, x0 + self.model.ntr - 0.5],
+            tlim=[t0, t0 + self.model.ns * self.model.si] if reset_viewbox else None,
+            clim=[x0 - 0.5, x0 + self.model.ntr - 0.5] if reset_viewbox else None,
         )
         # set the header combo box keys
         if isinstance(self.model.header, dict):
             self.view.comboBox_header.clear()
             for hname in self.model.header.keys():
                 self.view.comboBox_header.addItem(hname)
-        self.set_gain(gain=gain)
+        self.set_gain(gain=self.gain)
         self.set_header()
 
     def remove_all_layers(self):
@@ -664,7 +703,41 @@ class Controller(abc.ABC):
 
 
 class ControllerWiggle(Controller):
-    pass
+    def _update_plotItem(self, tlim=None, clim=None):
+        if self.model.taxis == 0:  # time is the 0 dimension and the horizontal axis
+            xlim, ylim = (tlim, clim)
+            # we plot only one item for all traces, by concatenating the whole array and adding a column of
+            wiggle_y = np.r_[self.model.data, np.ones(self.model.ntr)[np.newaxis, :]]
+            wiggle_y = (
+                wiggle_y / (20 * np.log10(self.gain))
+                + np.arange(self.model.ntr)[np.newaxis, :]
+            )
+            self.view.plotDataItem_wiggle.setData(
+                x=np.tile(np.r_[self.tscale, np.nan], self.model.ntr),
+                y=wiggle_y.T.flatten(),
+            )
+        elif self.model.taxis == 1:  # time is the 1 dimension and vertical axis
+            xlim, ylim = (clim, tlim)
+            # TODO
+        else:
+            ValueError("taxis must be 0 (horizontal axis) or 1 (vertical axis)")
+        if tlim is not None and clim is not None:
+            self.view.plotItem_header_h.setLimits(xMin=xlim[0], xMax=xlim[1])
+            self.view.plotItem_header_v.setLimits(yMin=ylim[0], yMax=ylim[1])
+            self.view.plotItem_seismic.setLimits(
+                xMin=xlim[0], xMax=xlim[1], yMin=ylim[0], yMax=ylim[1]
+            )
+            # reset the view
+            xlim, ylim = self.limits()
+            self.view.viewBox_seismic.setXRange(*xlim, padding=0)
+            self.view.viewBox_seismic.setYRange(*ylim, padding=0)
+
+    def set_gain(self, gain=None):
+        if gain is None:
+            gain = self.gain
+        levels = 10 ** (gain / 20) * 4 * np.array([-1, 1])
+        self.view.imageItem_seismic.setLevels(levels)
+        self.view.lineEdit_gain.setText(f"{gain:.1f}")
 
 
 class ControllerImage(Controller):
@@ -681,17 +754,19 @@ class ControllerImage(Controller):
             self.view.plotItem_seismic.invertY()
         else:
             ValueError("taxis must be 0 (horizontal axis) or 1 (vertical axis)")
-        self.transform = np.array(transform).reshape((3, 3)).T
-        self.view.imageItem_seismic.setTransform(QtGui.QTransform(*transform))
-        self.view.plotItem_header_h.setLimits(xMin=xlim[0], xMax=xlim[1])
-        self.view.plotItem_header_v.setLimits(yMin=ylim[0], yMax=ylim[1])
-        self.view.plotItem_seismic.setLimits(
-            xMin=xlim[0], xMax=xlim[1], yMin=ylim[0], yMax=ylim[1]
-        )
-        # reset the view
-        xlim, ylim = self.limits()
-        self.view.viewBox_seismic.setXRange(*xlim, padding=0)
-        self.view.viewBox_seismic.setYRange(*ylim, padding=0)
+        # only reset the view if needed
+        if tlim is not None and clim is not None:
+            self.transform = np.array(transform).reshape((3, 3)).T
+            self.view.imageItem_seismic.setTransform(QtGui.QTransform(*transform))
+            self.view.plotItem_header_h.setLimits(xMin=xlim[0], xMax=xlim[1])
+            self.view.plotItem_header_v.setLimits(yMin=ylim[0], yMax=ylim[1])
+            self.view.plotItem_seismic.setLimits(
+                xMin=xlim[0], xMax=xlim[1], yMin=ylim[0], yMax=ylim[1]
+            )
+            # reset the view
+            xlim, ylim = self.limits()
+            self.view.viewBox_seismic.setXRange(*xlim, padding=0)
+            self.view.viewBox_seismic.setYRange(*ylim, padding=0)
 
     def redraw(self):
         """
@@ -726,7 +801,8 @@ def viewseis(w=None, si=0.002, h=None, title=None, t0=0, x0=0, taxis=1):
     # app = easyqc.qt.create_app()
     eqc = EasyQC._get_or_create(title=title)
     if w is not None:
-        eqc.ctrl.set_model(w, h=h, si=si, t0=t0, x0=x0, taxis=taxis)
+        eqc.model.set_data(w, si=si, header=h, x0=x0, t0=t0, taxis=taxis)
+        eqc.ctrl.set_model()
     eqc.show()
     return eqc
 

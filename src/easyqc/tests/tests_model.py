@@ -1,12 +1,13 @@
 import numpy as np
 from easyqc.gui import Model
-import scipy.signal
+
+from easyqc.tests.tests_gui import ricker
 
 
 def _synthetic_data(ntr=500, ns=2000):
     # dx, v1 = (5, 2000)
     data = np.zeros((ntr, ns), np.float32)
-    data[:, 500:600] = scipy.signal.ricker(100, 4)
+    data[:, 500:600] = ricker(100, 4)
 
     # create a record with 400 traces and 2500 samples
     noise = np.random.randn(ntr, ns) / 10

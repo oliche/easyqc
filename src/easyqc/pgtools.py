@@ -34,7 +34,7 @@ class ImShowSpectrogram(QtWidgets.QMainWindow):
 
     @property
     def noverlap(self):
-        return self.settings.value("noverlap", 128)
+        return self.nperseg // 2
 
     def _settings2ui(self):
         self.uiLineEdit_nfft.setText(str(self.nfft))

@@ -1,6 +1,8 @@
 from qtpy import QtCore, QtWidgets
 from pyqtgraph import PlotWidget
 
+import easyqc
+
 
 class Ui_MainWindow(object):
     def __init__(self):
@@ -73,7 +75,7 @@ class Ui_MainWindow(object):
         self.label_x.setMaximumSize(QtCore.QSize(80, 20))
         self.label_x.setText("")
         self.label_x.setObjectName("label_x")
-        self.gridLayout_2.addWidget(self.label_x, 4, 1, 1, 1)
+        self.gridLayout_2.addWidget(self.label_x, 7, 1, 1, 1)
         self.lineEdit_sort = QtWidgets.QLineEdit(self.frame_seismic)
         self.lineEdit_sort.setMinimumSize(QtCore.QSize(65, 0))
         self.lineEdit_sort.setMaximumSize(QtCore.QSize(50, 20))
@@ -93,6 +95,7 @@ class Ui_MainWindow(object):
         self.label_gain.setMaximumSize(QtCore.QSize(30, 16777215))
         self.label_gain.setObjectName("label_gain")
         self.gridLayout_2.addWidget(self.label_gain, 0, 0, 1, 1)
+        # Line edit for Gain
         self.lineEdit_gain = QtWidgets.QLineEdit(self.frame_seismic)
         sizePolicy = QtWidgets.QSizePolicy(
             QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed
@@ -107,6 +110,7 @@ class Ui_MainWindow(object):
         self.lineEdit_gain.setMaximumSize(QtCore.QSize(50, 16777215))
         self.lineEdit_gain.setObjectName("lineEdit_gain")
         self.gridLayout_2.addWidget(self.lineEdit_gain, 0, 1, 1, 1)
+        # edit amplitude
         self.label_amp = QtWidgets.QLabel(self.frame_seismic)
         self.label_amp.setMinimumSize(QtCore.QSize(70, 0))
         self.label_amp.setMaximumSize(QtCore.QSize(80, 20))
@@ -117,18 +121,47 @@ class Ui_MainWindow(object):
         self.label_txt_t.setMaximumSize(QtCore.QSize(10, 20))
         self.label_txt_t.setObjectName("label_txt_t")
         self.gridLayout_2.addWidget(self.label_txt_t, 5, 0, 1, 1)
+        # sort
         self.label_sort = QtWidgets.QLabel(self.frame_seismic)
         self.label_sort.setMaximumSize(QtCore.QSize(30, 16777215))
         self.label_sort.setObjectName("label_sort")
         self.gridLayout_2.addWidget(self.label_sort, 2, 0, 1, 1)
+        # radio buttons display mode
+        self.widget_display_mode = QtWidgets.QWidget(self.frame_seismic)
+        self.widget_display_mode.setObjectName("widget_display_mode")
+        self.vbox_display_mode = QtWidgets.QVBoxLayout(self.widget_display_mode)
+        self.vbox_display_mode.setContentsMargins(0, 0, 0, 0)
+        self.vbox_display_mode.setSpacing(2)
+        self.vbox_display_mode.setObjectName("vbox_display_mode")
+
+        self.radio_density = QtWidgets.QRadioButton("Density", self.widget_display_mode)
+        self.radio_density.setObjectName("radio_density")
+        self.radio_wiggle = QtWidgets.QRadioButton("Wiggle", self.widget_display_mode)
+        self.radio_wiggle.setObjectName("radio_wiggle")
+        self.radio_density.setChecked(True)
+
+        self.displayModeGroup = QtWidgets.QButtonGroup(self.frame_seismic)
+        self.displayModeGroup.setExclusive(True)
+        self.displayModeGroup.addButton(self.radio_density)
+        self.displayModeGroup.addButton(self.radio_wiggle)
+
+        self.vbox_display_mode.addWidget(self.radio_density)
+        self.vbox_display_mode.addWidget(self.radio_wiggle)
+
+        self.gridLayout_2.addWidget(self.widget_display_mode, 3, 0, 1, 2)
+        # spacer
         spacerItem3 = QtWidgets.QSpacerItem(
             20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
         )
-        self.gridLayout_2.addItem(spacerItem3, 3, 1, 1, 1)
+        self.gridLayout_2.addItem(spacerItem3, 4, 1, 1, 1)
+        # text box for hover
         self.label_txt_x = QtWidgets.QLabel(self.frame_seismic)
         self.label_txt_x.setMaximumSize(QtCore.QSize(10, 20))
         self.label_txt_x.setObjectName("label_txt_x")
-        self.gridLayout_2.addWidget(self.label_txt_x, 4, 0, 1, 1)
+        self.gridLayout_2.addWidget(self.label_txt_x, 5, 0, 1, 1)
+        self.label_version = QtWidgets.QLabel(self.frame_seismic)
+        self.label_version.setText(f"EasyQc {easyqc.__version__}")
+        self.gridLayout_2.addWidget(self.label_version, 7, 0, 1, 2)
         self.gridLayout.addWidget(self.frame_seismic, 2, 1, 3, 1)
         self.verticalScrollBar = QtWidgets.QScrollBar(self.centralwidget)
         self.verticalScrollBar.setOrientation(QtCore.Qt.Vertical)

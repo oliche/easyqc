@@ -5,7 +5,7 @@ from qtpy import QtCore
 from easyqc.gui import EasyQC, viewseis
 
 
-def _ricker(points: int, a: float) -> np.ndarray:
+def ricker(points: int, a: float) -> np.ndarray:
     A = 2 / (np.sqrt(3 * a) * (np.pi**0.25))
     wsq = a**2
     vec = np.arange(0, points) - (points - 1.0) / 2
@@ -19,7 +19,7 @@ def _ricker(points: int, a: float) -> np.ndarray:
 def synthetic_seis():
     ntr, ns = 500, 2000
     data = np.zeros((ntr, ns), np.float32)
-    data[:, 500:600] = _ricker(100, 4)
+    data[:, 500:600] = ricker(100, 4)
 
     noise = np.random.randn(ntr, ns).astype(np.float32) / 10
     a, b = np.meshgrid(np.arange(ntr / 2) * 8 + 2000, np.arange(2) * 50 + 5000)
@@ -66,4 +66,16 @@ def test_gain_edit_updates(view_with_data, qtbot):
     w = view_with_data
     w.lineEdit_gain.setText("6")
     qtbot.keyPress(w.lineEdit_gain, QtCore.Qt.Key_Return)
+    qtbot.mouseClick(w.radio_wiggle, QtCore.Qt.LeftButton)
+    qtbot.keyPress(w.lineEdit_gain, QtCore.Qt.Key_Return)
     assert float(w.lineEdit_gain.text()) == 6.0
+
+
+def test_toggle_density_wiggle(view_with_data, qtbot):
+    w = view_with_data
+    assert w._display_mode == "density"
+    qtbot.mouseClick(w.radio_wiggle, QtCore.Qt.LeftButton)
+    assert w._display_mode == "wiggle"
+    assert w.imageItem_seismic.image is None
+    qtbot.mouseClick(w.radio_density, QtCore.Qt.LeftButton)
+    assert w._display_mode == "density"
