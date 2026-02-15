@@ -1,7 +1,7 @@
 # Display using pyqtgraph
 from pathlib import Path
 
-from PyQt5 import QtWidgets, QtCore, QtGui, uic
+from qtpy import QtWidgets, QtCore, QtGui, uic
 import pyqtgraph as pg
 from pyqtgraph.graphicsItems.GradientEditorItem import Gradients
 

@@ -69,7 +69,7 @@ uv pip install -e .
 
 Pypi Release checklist
 - Update version in `pyproject.toml`
-- Flake `flake8`
+- Flake `ruff check .`
 - publish on pypi:
 ```shell
 rm -fR dist

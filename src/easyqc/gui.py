@@ -3,11 +3,12 @@ from pathlib import Path
 from dataclasses import dataclass
 
 import numpy as np
-from PyQt5 import QtWidgets, QtCore, QtGui, uic
+import pyqtgraph as pg
+from qtpy import QtCore, QtGui, QtWidgets
 
 import easyqc.qt as qt
-import pyqtgraph as pg
 from easyqc.pgtools import ImShowSpectrogram
+from easyqc.view import Ui_MainWindow
 
 PARAMS_TRACE_PLOTS = {
     'neighbors': 2,
@@ -15,7 +16,7 @@ PARAMS_TRACE_PLOTS = {
 }
 
 
-class EasyQC(QtWidgets.QMainWindow):
+class EasyQC(QtWidgets.QMainWindow, Ui_MainWindow):
     """
     This is the view in the MVC approach
     """
@@ -43,7 +44,6 @@ class EasyQC(QtWidgets.QMainWindow):
         # wave by Diana Militano from the Noun Project
         self.layers = {}
         self.ctrl = Controller(self)
-        uic.loadUi(Path(__file__).parent.joinpath('easyqc.ui'), self)
         self.setWindowIcon(QtGui.QIcon(str(Path(__file__).parent.joinpath('easyqc.svg'))))
         background_color = self.palette().color(self.backgroundRole())
         # init the seismic density display
@@ -162,8 +162,11 @@ class EasyQC(QtWidgets.QMainWindow):
 
     def mouseMoveEvent(self, scenepos):
         if isinstance(scenepos, tuple):
+
             scenepos = scenepos[0]
         else:
+            return
+        if self.ctrl.model.data is None:
             return
         qpoint = self.imageItem_seismic.mapFromScene(scenepos)
         c, t, a, h = self.ctrl.cursor2timetraceamp(qpoint)
@@ -389,7 +392,11 @@ class Controller:
 
     @property
     def gain(self):
-        return float(self.view.lineEdit_gain.text()) or self.model.auto_gain()
+        str_gain = self.view.lineEdit_gain.text()
+        if str_gain.strip() == '':
+            return self.model.auto_gain()
+        else:
+            return float(str_gain)
 
     def set_header(self):
         key = self.view.comboBox_header.currentText()
