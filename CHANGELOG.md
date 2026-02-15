@@ -1,7 +1,12 @@
 # Changelog
 
-## [UNRELEASED]
-- moved to qtpy
+## [1.2.0]
+
+### Added
+- option to toggle between density and wiggle display
+
+### Changed
+- moved to qtpy to allow multiple Qt Backends
 - removed ui file
 
 ## [1.1.0] - 2025-06-12
