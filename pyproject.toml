@@ -21,7 +21,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-  "ruff",
+    "ruff",
+    "pytest-qt",
 ]
 pyqt5 = ["PyQt5>=5.15.0"]
 
