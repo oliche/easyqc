@@ -28,13 +28,28 @@ def synthetic_seis():
 
 
 @pytest.fixture
+def easyqc_window(qtbot):
+    w = EasyQC()
+    qtbot.addWidget(w)
+    w.show()
+    qtbot.waitExposed(w)
+    yield w
+    w.close()
+    w.deleteLater()
+    qtbot.wait(50)
+
+
+@pytest.fixture
 def view_with_data(qtbot, synthetic_seis):
     data, header = synthetic_seis
     w = viewseis(data, si=0.002, h=header, title="test")
     qtbot.addWidget(w)
     w.show()
+    qtbot.waitExposed(w)
     yield w
     w.close()
+    w.deleteLater()
+    qtbot.wait(50)
 
 
 def test_viewseis_shows(view_with_data):
@@ -42,16 +57,12 @@ def test_viewseis_shows(view_with_data):
     assert hasattr(view_with_data, "plotItem_seismic")
 
 
-def test_window_builds(qtbot):
-    w = EasyQC()
-    qtbot.addWidget(w)
-    w.show()
-
-    assert w.isVisible()
-    assert hasattr(w, "plotItem_seismic")
+def test_window_builds(easyqc_window):
+    assert easyqc_window.isVisible()
+    assert hasattr(easyqc_window, "plotItem_seismic")
 
 
-def test_gain_edit_updates(qtbot, view_with_data):
+def test_gain_edit_updates(view_with_data, qtbot):
     w = view_with_data
     w.lineEdit_gain.setText("6")
     qtbot.keyPress(w.lineEdit_gain, QtCore.Qt.Key_Return)

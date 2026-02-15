@@ -1,3 +1,4 @@
+import abc
 import sys  # We need sys so that we can pass argv to QApplication
 from pathlib import Path
 from dataclasses import dataclass
@@ -16,11 +17,99 @@ PARAMS_TRACE_PLOTS = {
 }
 
 
+@dataclass
+class Model:
+    """Class for keeping track of the visualized data"""
+
+    data: np.array
+    header: np.array
+    si: float = 1.0
+    nx: int = 1
+    ny: int = 1
+    t0: float = 0
+    x0: float = 0
+    taxis: int = 0
+
+    def auto_gain(self) -> float:
+        rmsnan = np.nansum(self.data**2, axis=self.taxis) / np.sum(
+            ~np.isnan(self.data), axis=self.taxis
+        )
+        return 20 * np.log10(np.median(np.sqrt(rmsnan)))
+
+    def get_trace_spectrogram(self, c, trange=None):
+        from scipy.signal import spectrogram
+
+        tr = self.get_trace(c, trange=trange)
+        fscale, tscale, tf = spectrogram(
+            tr, fs=1 / self.si, nperseg=50, nfft=512, window="cosine", noverlap=48
+        )
+        tscale += trange[0]
+        tf = 20 * np.log10(tf + np.finfo(float).eps)
+        return fscale, tscale, tf
+
+    def get_trace_spectrum(self, c, trange=None, neighbors=0):
+        tr = self.get_trace(c, trange=trange, neighbors=neighbors)
+        psd = 20 * np.log10(np.abs(np.fft.rfft(tr)) - np.finfo(float).eps)
+        return np.fft.rfftfreq(tr.size, self.si), psd
+
+    def get_trace(self, c, trange=None, neighbors=0):
+        """
+        Get trace according to index, taking into account the orientation of the model
+        :param c: trace index
+        :param trange: time-range (secs)
+        :return: np.array of size (ns, nc)
+        """
+        trsel = np.arange(-neighbors, neighbors + 1) + int(np.floor(c))
+        trsel = trsel[np.logical_and(trsel < self.ntr, trsel >= 0)]
+        if trange is not None:
+            first_s = int((trange[0] - self.t0) / self.si)
+            last_s = int((trange[1] - self.t0) / self.si)
+            sl = slice(first_s, last_s)
+        else:
+            sl = slice(None)
+        if self.caxis == 0:
+            return np.squeeze(self.data[trsel, sl].T)
+        else:
+            return np.squeeze(self.data[sl, trsel])
+
+    def set_data(self, data, header=None, si=None, t0=0, x0=0, taxis=1):
+        assert (header is not None) or si
+        # intrinsic data
+        self.x0 = x0
+        self.t0 = t0
+        self.header = header
+        self.data = data
+        self.taxis = taxis
+        self.nx, self.ny = self.data.shape
+        if self.taxis == 1:
+            self.ntr, self.ns = self.data.shape
+            self.caxis = 0
+        else:
+            self.ns, self.ntr = self.data.shape
+            self.caxis = 1
+        # get the sampling reate
+        if si is not None:
+            self.si = si
+        else:
+            if isinstance(header, float):
+                self.si = header
+            else:
+                self.si = header.si[0]
+        self.header = {"trace": np.arange(self.ntr)}
+        if header is not None:
+            self.header.update(header)
+
+    @property
+    def tscale(self):
+        return np.arange(self.ns) * self.si + self.t0
+
+
 class EasyQC(QtWidgets.QMainWindow, Ui_MainWindow):
     """
     This is the view in the MVC approach
     """
 
+    model: Model = None
     layers = None  # used for additional scatter layers
     QT_APP = None
 
@@ -45,11 +134,17 @@ class EasyQC(QtWidgets.QMainWindow, Ui_MainWindow):
             eqc.setWindowTitle(title)
         return eqc
 
+    @property
+    def ctrl(self):
+        return self._ctrl_image
+
     def __init__(self, *args, **kwargs):
-        super(EasyQC, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         # wave by Diana Militano from the Noun Project
         self.layers = {}
-        self.ctrl = Controller(self)
+        self.model = Model(None, None)
+        self._ctrl_image = ControllerImage(self)
+        # self._ctrl_wiggle = ControllerWiggle(self)
         self.setWindowIcon(
             QtGui.QIcon(str(Path(__file__).parent.joinpath("easyqc.svg")))
         )
@@ -313,14 +408,53 @@ class EasyQC(QtWidgets.QMainWindow, Ui_MainWindow):
         self.imageItem_seismic.setColorMap(cmap)
 
 
-class Controller:
+class Controller(abc.ABC):
     def __init__(self, view):
         self.view = view
-        self.model = Model(None, None)
         self.order = None
         self.transform = np.eye(3)  # affine transform image indices 2 data domain
         self.trace_indices = None
         self.hkey = None
+
+    @abc.abstractmethod
+    def set_gain(self, gain=None):
+        pass
+
+    @abc.abstractmethod
+    def _update_plotItem(self, tlim, clim):
+        pass
+
+    @property
+    def model(self) -> Model:
+        return self.view.model
+
+    def set_model(self, data, h=None, si=0.002, gain=None, x0=0, t0=0, taxis=1):
+        """
+        Main entry point for creating or updating new data array to the GUI
+        data is a 2d array [ntr, nsamples]
+        if 3d the first dimensions are merged in ntr and the last is nsamples
+        update_data(self, data=None, h=0.002, gain=None)
+        """
+        # reshape a 3d+ array in 2d to plot as an image
+        self.remove_all_layers()
+        if data.ndim >= 3:
+            data = np.reshape(data, (-1, data.shape[-1]))
+        self.model.set_data(data, si=si, header=h, x0=x0, t0=t0, taxis=taxis)
+        self.trace_indices = np.arange(self.model.ntr)
+        self.view.editSort(
+            redraw=False
+        )  # this sets the self.trace_indices according to sort order
+        self._update_plotItem(
+            tlim=[t0, t0 + self.model.ns * self.model.si],
+            clim=[x0 - 0.5, x0 + self.model.ntr - 0.5],
+        )
+        # set the header combo box keys
+        if isinstance(self.model.header, dict):
+            self.view.comboBox_header.clear()
+            for hname in self.model.header.keys():
+                self.view.comboBox_header.addItem(hname)
+        self.set_gain(gain=gain)
+        self.set_header()
 
     def remove_all_layers(self):
         layers_dict = self.view.layers.copy()
@@ -419,8 +553,6 @@ class Controller:
                 eqc.ctrl.set_gain(self.gain)
                 eqc.plotItem_seismic.setXLink(self.view.plotItem_seismic)
                 eqc.plotItem_seismic.setYLink(self.view.plotItem_seismic)
-                # eqc.plotItem_seismic.setXLink(eqc.plotItem_header_h)
-                # eqc.plotItem_seismic.setYLink(eqc.plotItem_header_v)
                 # also propagate sorting
                 eqc.lineEdit_sort.setText(self.view.lineEdit_sort.text())
                 eqc.ctrl.sort(eqc.lineEdit_sort.text())
@@ -430,23 +562,6 @@ class Controller:
                 if i % 2 == 1:
                     rect.translate(rect.width(), 0)
                 eqc.setGeometry(rect)
-
-    def redraw(self):
-        """redraw seismic and headers with order and selection"""
-        # np.take could look neater but it's actually much slower than straight indexing
-        if self.model.taxis == 1:
-            self.view.imageItem_seismic.setImage(self.model.data[self.trace_indices, :])
-        elif self.model.taxis == 0:
-            self.view.imageItem_seismic.setImage(self.model.data[:, self.trace_indices])
-        self.set_header()
-        self.set_gain()
-
-    def set_gain(self, gain=None):
-        if gain is None:
-            gain = self.gain
-        levels = 10 ** (gain / 20) * 4 * np.array([-1, 1])
-        self.view.imageItem_seismic.setLevels(levels)
-        self.view.lineEdit_gain.setText(f"{gain:.1f}")
 
     @property
     def gain(self):
@@ -500,56 +615,6 @@ class Controller:
         if redraw:
             self.redraw()
 
-    def update_data(self, data, h=None, si=0.002, gain=None, x0=0, t0=0, taxis=1):
-        """
-        data is a 2d array [ntr, nsamples]
-        if 3d the first dimensions are merged in ntr and the last is nsamples
-        update_data(self, data=None, h=0.002, gain=None)
-        """
-        # reshape a 3d+ array in 2d to plot as an image
-        self.remove_all_layers()
-        # if the data has the same shape as the current model data, keep axis all the same
-        update_axis = self.model.data is None or self.model.data.shape != data.shape
-        if data.ndim >= 3:
-            data = np.reshape(data, (-1, data.shape[-1]))
-        self.model.set_data(data, si=si, header=h, x0=x0, t0=t0, taxis=taxis)
-        self.trace_indices = np.arange(self.model.ntr)
-        self.view.editSort(
-            redraw=False
-        )  # this sets the self.trace_indices according to sort order
-        clim = [x0 - 0.5, x0 + self.model.ntr - 0.5]
-        tlim = [t0, t0 + self.model.ns * self.model.si]
-        if taxis == 0:  # time is the 0 dimension and the horizontal axis
-            xlim, ylim = (tlim, clim)
-            transform = [si, 0.0, 0.0, 0.0, 1, 0.0, t0 - si / 2, x0 - 0.5, 1.0]
-            self.view.imageItem_seismic.setImage(data[:, self.trace_indices])
-        elif taxis == 1:  # time is the 1 dimension and vertical axis
-            xlim, ylim = (clim, tlim)
-            transform = [1.0, 0.0, 0.0, 0.0, si, 0.0, x0 - 0.5, t0 - si / 2, 1.0]
-            self.view.imageItem_seismic.setImage(data[self.trace_indices, :])
-            self.view.plotItem_seismic.invertY()
-        else:
-            ValueError("taxis must be 0 (horizontal axis) or 1 (vertical axis)")
-        self.transform = np.array(transform).reshape((3, 3)).T
-        self.view.imageItem_seismic.setTransform(QtGui.QTransform(*transform))
-        self.view.plotItem_header_h.setLimits(xMin=xlim[0], xMax=xlim[1])
-        self.view.plotItem_header_v.setLimits(yMin=ylim[0], yMax=ylim[1])
-        self.view.plotItem_seismic.setLimits(
-            xMin=xlim[0], xMax=xlim[1], yMin=ylim[0], yMax=ylim[1]
-        )
-        # reset the view
-        if update_axis:
-            xlim, ylim = self.limits()
-            self.view.viewBox_seismic.setXRange(*xlim, padding=0)
-            self.view.viewBox_seismic.setYRange(*ylim, padding=0)
-        # set the header combo box keys
-        if isinstance(self.model.header, dict):
-            self.view.comboBox_header.clear()
-            for hname in self.model.header.keys():
-                self.view.comboBox_header.addItem(hname)
-        self.set_gain(gain=gain)
-        self.set_header()
-
     def update_hover(self, qpoint, key):
         c, t, a, _ = self.cursor2timetraceamp(qpoint)
         if key == "Trace":
@@ -574,6 +639,14 @@ class Controller:
             )
 
     @property
+    def tscale(self):
+        """
+        Returns the full time scale of the data
+        :return:
+        """
+        return np.arange(self.model.ns) * self.model.si + self.model.t0
+
+    @property
     def trange(self):
         """
         returns the current time range of the view
@@ -590,88 +663,54 @@ class Controller:
         return self.view.viewBox_seismic.viewRange()[self.model.caxis]
 
 
-@dataclass
-class Model:
-    """Class for keeping track of the visualized data"""
+class ControllerWiggle(Controller):
+    pass
 
-    data: np.array
-    header: np.array
-    si: float = 1.0
-    nx: int = 1
-    ny: int = 1
 
-    def auto_gain(self) -> float:
-        rmsnan = np.nansum(self.data**2, axis=self.taxis) / np.sum(
-            ~np.isnan(self.data), axis=self.taxis
+class ControllerImage(Controller):
+    def _update_plotItem(self, tlim, clim):
+        x0, t0, si = self.model.x0, self.model.t0, self.model.si
+        if self.model.taxis == 0:  # time is the 0 dimension and the horizontal axis
+            xlim, ylim = (tlim, clim)
+            transform = [si, 0.0, 0.0, 0.0, 1, 0.0, t0 - si / 2, x0 - 0.5, 1.0]
+            self.view.imageItem_seismic.setImage(self.model.data[:, self.trace_indices])
+        elif self.model.taxis == 1:  # time is the 1 dimension and vertical axis
+            xlim, ylim = (clim, tlim)
+            transform = [1.0, 0.0, 0.0, 0.0, si, 0.0, x0 - 0.5, t0 - si / 2, 1.0]
+            self.view.imageItem_seismic.setImage(self.model.data[self.trace_indices, :])
+            self.view.plotItem_seismic.invertY()
+        else:
+            ValueError("taxis must be 0 (horizontal axis) or 1 (vertical axis)")
+        self.transform = np.array(transform).reshape((3, 3)).T
+        self.view.imageItem_seismic.setTransform(QtGui.QTransform(*transform))
+        self.view.plotItem_header_h.setLimits(xMin=xlim[0], xMax=xlim[1])
+        self.view.plotItem_header_v.setLimits(yMin=ylim[0], yMax=ylim[1])
+        self.view.plotItem_seismic.setLimits(
+            xMin=xlim[0], xMax=xlim[1], yMin=ylim[0], yMax=ylim[1]
         )
-        return 20 * np.log10(np.median(np.sqrt(rmsnan)))
+        # reset the view
+        xlim, ylim = self.limits()
+        self.view.viewBox_seismic.setXRange(*xlim, padding=0)
+        self.view.viewBox_seismic.setYRange(*ylim, padding=0)
 
-    def get_trace_spectrogram(self, c, trange=None):
-        from scipy.signal import spectrogram
-
-        tr = self.get_trace(c, trange=trange)
-        fscale, tscale, tf = spectrogram(
-            tr, fs=1 / self.si, nperseg=50, nfft=512, window="cosine", noverlap=48
-        )
-        tscale += trange[0]
-        tf = 20 * np.log10(tf + np.finfo(float).eps)
-        return fscale, tscale, tf
-
-    def get_trace_spectrum(self, c, trange=None, neighbors=0):
-        tr = self.get_trace(c, trange=trange, neighbors=neighbors)
-        psd = 20 * np.log10(np.abs(np.fft.rfft(tr)) - np.finfo(float).eps)
-        return np.fft.rfftfreq(tr.size, self.si), psd
-
-    def get_trace(self, c, trange=None, neighbors=0):
+    def redraw(self):
         """
-        Get trace according to index, taking into account the orientation of the model
-        :param c: trace index
-        :param trange: time-range (secs)
-        :return: np.array of size (ns, nc)
+        Redraws the seismic data view based on the current model state
+        :return: None
         """
-        trsel = np.arange(-neighbors, neighbors + 1) + int(np.floor(c))
-        trsel = trsel[np.logical_and(trsel < self.ntr, trsel >= 0)]
-        if trange is not None:
-            first_s = int((trange[0] - self.t0) / self.si)
-            last_s = int((trange[1] - self.t0) / self.si)
-            sl = slice(first_s, last_s)
-        else:
-            sl = slice(None)
-        if self.caxis == 0:
-            return np.squeeze(self.data[trsel, sl].T)
-        else:
-            return np.squeeze(self.data[sl, trsel])
+        if self.model.taxis == 1:
+            self.view.imageItem_seismic.setImage(self.model.data[self.trace_indices, :])
+        elif self.model.taxis == 0:
+            self.view.imageItem_seismic.setImage(self.model.data[:, self.trace_indices])
+        self.set_header()
+        self.set_gain()
 
-    def set_data(self, data, header=None, si=None, t0=0, x0=0, taxis=1):
-        assert (header is not None) or si
-        # intrinsic data
-        self.x0 = x0
-        self.t0 = t0
-        self.header = header
-        self.data = data
-        self.taxis = taxis
-        self.nx, self.ny = self.data.shape
-        if self.taxis == 1:
-            self.ntr, self.ns = self.data.shape
-            self.caxis = 0
-        else:
-            self.ns, self.ntr = self.data.shape
-            self.caxis = 1
-        # get the sampling reate
-        if si is not None:
-            self.si = si
-        else:
-            if isinstance(header, float):
-                self.si = header
-            else:
-                self.si = header.si[0]
-        self.header = {"trace": np.arange(self.ntr)}
-        if header is not None:
-            self.header.update(header)
-
-    @property
-    def tscale(self):
-        return np.arange(self.ns) * self.si + self.t0
+    def set_gain(self, gain=None):
+        if gain is None:
+            gain = self.gain
+        levels = 10 ** (gain / 20) * 4 * np.array([-1, 1])
+        self.view.imageItem_seismic.setLevels(levels)
+        self.view.lineEdit_gain.setText(f"{gain:.1f}")
 
 
 def viewseis(w=None, si=0.002, h=None, title=None, t0=0, x0=0, taxis=1):
@@ -687,7 +726,7 @@ def viewseis(w=None, si=0.002, h=None, title=None, t0=0, x0=0, taxis=1):
     # app = easyqc.qt.create_app()
     eqc = EasyQC._get_or_create(title=title)
     if w is not None:
-        eqc.ctrl.update_data(w, h=h, si=si, t0=t0, x0=x0, taxis=taxis)
+        eqc.ctrl.set_model(w, h=h, si=si, t0=t0, x0=x0, taxis=taxis)
     eqc.show()
     return eqc
 
