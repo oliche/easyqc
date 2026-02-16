@@ -710,7 +710,7 @@ class ControllerWiggle(Controller):
             # we plot only one item for all traces, by concatenating the whole array and adding a column of
             wiggle_y = np.r_[self.model.data, np.ones(self.model.ntr)[np.newaxis, :]]
             wiggle_y = (
-                wiggle_y / ( 10 ** ((self.gain - 20) / 20))
+                wiggle_y / ( 10 ** (self.gain / 20))
                 + np.arange(self.model.ntr)[np.newaxis, :]
             )
             self.view.plotDataItem_wiggle.setData(
@@ -736,8 +736,8 @@ class ControllerWiggle(Controller):
     def set_gain(self, gain=None):
         if gain is None:
             gain = self.gain
-        self._update_plotItem()
         self.view.lineEdit_gain.setText(f"{gain:.1f}")
+        self._update_plotItem()
 
 
 class ControllerImage(Controller):
