@@ -6,7 +6,6 @@ readme = "README.md"
 authors = [
     {name = "Olivier Winter"},
 ]
-version = {attr = "easyqc.__version__"}
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
@@ -37,6 +36,10 @@ Homepage = "https://github.com/oliche/easyqc"
 
 [tool.pdm]
 package-dir = "src"
+
+[tool.pdm.version]
+source = "file"
+path = "src/easyqc/__init__.py"
 
 [build-system]
 requires = ["pdm-backend"]
